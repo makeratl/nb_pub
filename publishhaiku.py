@@ -46,15 +46,22 @@ def publish_article(json_file_path, api_key):
                 choice = input("Enter your choice (1/2/3): ").strip()
                 
                 if choice == '1':
-                    # Encode the generated image with overlaid text
+                    # Encode both the original background and the one with text
                     try:
+                        # Encode original background image
                         image_data = encode_image("haikubg.png")
                         article_data['image_data'] = image_data
-                        print(f"Image successfully encoded. Length: {len(image_data)} characters")
+                        print(f"Original image successfully encoded. Length: {len(image_data)} characters")
+                        
+                        # Encode background with haiku text
+                        image_haiku = encode_image("haikubg_with_text.png")
+                        article_data['image_haiku'] = image_haiku
+                        print(f"Haiku image successfully encoded. Length: {len(image_haiku)} characters")
                         break
                     except Exception as e:
-                        print(f"Error encoding image: {str(e)}")
+                        print(f"Error encoding images: {str(e)}")
                         article_data['image_data'] = None
+                        article_data['image_haiku'] = None
                         break
                 elif choice == '2':
                     continue  # This will restart the loop and generate a new image

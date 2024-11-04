@@ -98,6 +98,10 @@ def analyze_clusters(headlines_data):
             
             cluster_analysis = chat_with_codegpt(prompt)
             
+            if cluster_analysis is None:
+                print(f"Skipping cluster {cluster_id} due to API error.")
+                continue
+
             try:
                 analysis_json = json.loads(cluster_analysis)
                 category = analysis_json.get("category", "Unknown")
@@ -199,6 +203,14 @@ def present_menu_and_process(selected_cluster, analyzed_clusters):
     prompt = f"2. Article Creation:\n\nCreate an article based on these sources. Include a headline, haiku, full story, and a one-paragraph summary. The story should be in HTML format.\n\n{json.dumps(articles_list, indent=2)}"
     article_json = chat_with_codegpt(prompt)
 
+    if article_json is None:
+        print("Failed to generate article due to API error.")
+        retry = input("Would you like to retry? (y/n): ").lower()
+        if retry == 'y':
+            return present_menu_and_process(selected_cluster, analyzed_clusters)
+        else:
+            return None, analyzed_clusters
+
     try:
         article_data = json.loads(article_json.replace('\n', '').replace('\r', ''))
     except json.JSONDecodeError:
@@ -231,6 +243,7 @@ def present_menu_and_process(selected_cluster, analyzed_clusters):
         # Save the publish_data to publish.json
         with open('publish.json', 'w') as f:
             json.dump(publish_data, f, indent=2)
+            
         print("\npublish.json has been updated with the new article data.")
     else:
         print("Error: The generated article data is missing required fields.")
