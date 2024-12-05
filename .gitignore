@@ -4,3 +4,4 @@ publish.json
 __pycache__/chat_codegpt.cpython-311.pyc
 __pycache__/haikubackground.cpython-311.pyc
 .env
+*.pyc
