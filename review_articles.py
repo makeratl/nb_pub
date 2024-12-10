@@ -93,11 +93,44 @@ def evaluate_article_with_ai(article: dict) -> Optional[dict]:
     bs_prob = article.get('bs_p', 'No BS probability available')
 
     prompt = f"""Evaluate this article and provide a detailed analysis. Consider the following aspects:
-    1. Story quality and coherence
-    2. Category appropriateness
-    3. Topic relevance
-    4. Content authenticity
-    5. Keyword accuracy
+
+    Scoring Criteria (1-10 scale):
+    1. Story quality and factual basis (0-7 points)
+       - Clear narrative structure (0-5)
+       - Professional writing style (0-5)
+
+    2. Source Analysis (0-1 points)
+       - Source Quality Assessment:
+         * Source Credibility (+0.8)
+           - Sources are established news/media organizations
+           - Sources likely contain direct quotes and primary data
+         * Source Variety (+0.2)
+           - Multiple perspectives available through cited sources
+       - Source Political Lean Analysis (informational, not scoring):
+         * Note sources as:
+           - Left-leaning (e.g., MSNBC, HuffPost)
+           - Center/Neutral (e.g., Reuters, AP)
+           - Right-leaning (e.g., Fox News, NY Post)
+         Note: Our articles summarize key points from fuller source articles.
+               Direct quotes may be in source articles rather than our summary.
+
+    3. Context and Completeness (0-2 points)
+       - Appropriate context provided
+       - Key information included
+       - Clear topic focus
+
+    Important Notes on Source Evaluation:
+    - Cited sources are complete articles containing additional context
+    - Our articles synthesize information from these fuller sources
+    - Direct citations are often in the source articles
+    - Evaluate source credibility rather than citation style
+    - Consider the depth of reporting available in source articles
+
+    Automatic Rejection Criteria (core issues only):
+    - Demonstrably false information
+    - Severe factual errors
+    - Complete lack of sources
+    Note: Source diversity and political lean should be noted but not trigger rejection
 
     Article Details:
     Headline: {headline}
@@ -106,19 +139,59 @@ def evaluate_article_with_ai(article: dict) -> Optional[dict]:
     Topic: {topic}
     BS Score: {bs_score}
     BS Probability: {bs_prob}
+    CitedSources: {cited}
 
     Return a JSON object with the following structure:
     {{
-        "quality_score": "1-10 rating",
+        "quality_score": "Combined score from criteria above (1-10). Scores below 6 should result in rejection",
         "category_assessment": "Correction to the Category if it is not in the defined list.",
         "cat": "corrected category",
         "topic_assessment": "evaluation of topic accuracy",
         "topic": "corrected topic keywords",
-        "bias_analysis": "analysis of content authenticity",
-        "bs_p": "raw numerical value of bias_analisys",
+        "bias_analysis": "Source-by-source political lean breakdown:
+                         - List each source with its political categorization
+                         - Calculate left/center/right ratio
+                         - Note any missing viewpoint perspectives",
+        "bs_p": "Political lean score (0.0-1.0):
+                0.0-0.3: Balanced source distribution
+                0.3-0.7: Leans left or right
+                0.7-1.0: Heavy left or right bias
+                Include + for right bias, - for left bias
+                Example: 0.8 (heavy right), -0.8 (heavy left)",
         "suggested_keywords": "list, of, relevant, keywords",
-        "recommendations": "Recommend approval or rejection return only 'approved' or 'rejected'"
+        "recommendations": "'approved' if quality_score >= 6, 'rejected' if quality_score < 6",
+        "reasoning": "Detailed explanation including two sections:
+                     QUALITY ASSESSMENT:
+                     1. Source credibility and reliability
+                     2. Raw data quality assessment
+                     3. Overall quality score justification
+                     
+                     POLITICAL LEAN ASSESSMENT:
+                     1. Individual source categorization (left/center/right)
+                     2. Overall source distribution ratio
+                     3. Missing viewpoint analysis
+                     4. Final political lean score with direction (+/-)"
     }}
+
+    Important: 
+    - Source Analysis Guidelines:
+      * Evaluate each source's known political lean
+      * Calculate overall source distribution
+      * Assess raw data quality from each source
+      * Consider source type hierarchy (primary > secondary)
+    
+    - Scoring Considerations:
+      * High scores (6-10): Focus on factual accuracy and clarity
+      * Low scores (1-5): Poor factual support or unclear presentation
+      * Source political lean should be noted but not heavily impact score
+      * Lack of source diversity reduces score by max 0.5 points
+
+    - Bias Score Guidelines:
+      * Document source political leans for transparency
+      * Calculate approximate left/right distribution
+      * Consider the full context available in source articles
+      * Focus on source credibility over citation style
+      * Missing perspectives should be noted but not heavily penalized
     """
     
     try:
@@ -149,6 +222,9 @@ def display_evaluation(evaluation: dict):
     
     print(f"\n{Fore.GREEN}Recommendations:{Style.RESET_ALL}")
     print(evaluation.get('recommendations', 'No recommendations available'))
+    
+    print(f"\n{Fore.GREEN}Reasoning:{Style.RESET_ALL}")
+    print(evaluation.get('reasoning', 'No reasoning provided'))
     
     print("="*80)
 
@@ -263,11 +339,11 @@ def main():
                     'cat': evaluation.get('cat'),
                     'topic': evaluation.get('topic'),
                     'bs_p': evaluation.get('bs_p'),
-                    'qas': quality_score
+                    'qas': quality_score,
+                    'reasoning': evaluation.get('reasoning')
                 }
                 # Remove None values
                 updates = {k: v for k, v in updates.items() if v is not None}
-                print(f"\n{Fore.CYAN}Debug - Quality Score: {quality_score}{Style.RESET_ALL}")
             else:  # skip or quit
                 updates = None
                 
