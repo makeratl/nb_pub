@@ -4,6 +4,10 @@ from chat_codegpt import chat_with_codegpt
 from colorama import init, Fore, Style
 from dotenv import load_dotenv
 import os
+from review_articles import evaluate_article_with_ai, display_article, display_evaluation, update_article_status
+from publish_utils import generate_and_encode_images, publish_article
+import http.client
+import traceback
 load_dotenv()
 
 # Initialize colorama
@@ -163,6 +167,135 @@ def select_cluster(analyzed_clusters):
         else:
             print("Invalid choice. Please try again.")
 
+def publish_with_images(publish_data, api_key):
+    """Publish article with generated haiku images"""
+    print(f"\n{Fore.CYAN}Starting publication process...{Style.RESET_ALL}")
+    
+    # Generate haiku background
+    haiku = publish_data.get('AIHaiku', '')
+    ai_headline = publish_data.get('AIHeadline', '')
+    article_date = publish_data.get('date', '') or publish_data.get('publishDate', '') or ''
+    
+    if haiku:
+        while True:
+            image_data, image_haiku = generate_and_encode_images(haiku, ai_headline, article_date)
+            
+            if image_data is None:
+                print(f"\n{Fore.RED}Failed to generate images{Style.RESET_ALL}")
+                return None
+                
+            print(f"\n{Fore.YELLOW}Options:")
+            print("1. Accept and continue")
+            print("2. Retry (generate a new image)")
+            print("3. Cancel publication{Style.RESET_ALL}")
+            choice = input("Enter your choice (1/2/3): ").strip()
+            
+            if choice == '1':
+                publish_data['image_data'] = image_data
+                publish_data['image_haiku'] = image_haiku
+                break
+            elif choice == '2':
+                continue
+            elif choice == '3':
+                print(f"{Fore.YELLOW}Publication cancelled.{Style.RESET_ALL}")
+                return None
+            else:
+                print(f"{Fore.RED}Invalid choice. Please try again.{Style.RESET_ALL}")
+    
+    # Publish the article
+    return publish_article(publish_data, api_key)
+
+def review_published_article(publish_data):
+    """Review an article before publication"""
+    print(f"\n{Fore.CYAN}Starting article review process...{Style.RESET_ALL}")
+    
+    # Convert publish_data to match the format expected by review_articles
+    article = {
+        'ID': 'DRAFT',  # This is a draft article
+        'AIHeadline': publish_data.get('AIHeadline', ''),
+        'AIStory': publish_data.get('AIStory', ''),
+        'cat': publish_data.get('cat', ''),
+        'topic': publish_data.get('topic', ''),
+        'Cited': publish_data.get('Cited', ''),
+        'bs': publish_data.get('bs', ''),
+        'bs_p': publish_data.get('bs_p', '')
+    }
+    
+    # Display article
+    display_article(article)
+    
+    # Get AI evaluation
+    print("\nRequesting AI evaluation...")
+    try:
+        evaluation = evaluate_article_with_ai(article)
+        
+        if not evaluation:
+            raise Exception("AI evaluation returned no results")
+            
+    except Exception as e:
+        print(f"\n{Fore.RED}AI Evaluation Failed!")
+        print(f"Error: {str(e)}{Style.RESET_ALL}")
+        return handle_review_error()
+    
+    # Display evaluation results
+    if evaluation:
+        display_evaluation(evaluation)
+        return handle_review_choice(evaluation)
+    
+    return 's', None
+
+def handle_review_error():
+    """Handle errors during review process"""
+    while True:
+        print(f"\n{Fore.YELLOW}Options:")
+        print("r = retry review")
+        print("s = skip review")
+        print("q = quit{Style.RESET_ALL}")
+        choice = input("Choice: ").lower()
+        
+        if choice in ['r', 's', 'q']:
+            return choice, None
+        print(f"{Fore.RED}Invalid input. Please use r, s, or q.{Style.RESET_ALL}")
+
+def handle_review_choice(evaluation):
+    """Handle user choice after review"""
+    while True:
+        print(f"\n{Fore.YELLOW}Accept AI evaluation?")
+        print("a = accept AI evaluation")
+        print("s = skip")
+        print("q = quit{Style.RESET_ALL}")
+        choice = input("Choice: ").lower()
+        
+        if choice == 'a':
+            return prepare_review_updates(evaluation)
+        elif choice in ['s', 'q']:
+            return choice, None
+        
+        print(f"{Fore.RED}Invalid input. Please use a, s, or q.{Style.RESET_ALL}")
+
+def prepare_review_updates(evaluation):
+    """Prepare updates from review evaluation"""
+    try:
+        quality_score = evaluation['quality_score']
+        quality_score = ''.join(c for c in str(quality_score) if c.isdigit() or c == '.')
+        quality_score = float(quality_score)
+        if quality_score > 10:
+            quality_score = quality_score / 10
+    except (ValueError, TypeError, KeyError):
+        print(f"{Fore.YELLOW}Warning: Could not parse quality score{Style.RESET_ALL}")
+        quality_score = None
+    
+    updates = {
+        'cat': evaluation.get('cat'),
+        'topic': evaluation.get('topic'),
+        'bs_p': evaluation.get('bs_p'),
+        'qas': quality_score,
+        'AISummary': evaluation.get('reasoning')
+    }
+    updates = {k: v for k, v in updates.items() if v is not None}
+    
+    return 'continue', updates
+
 def present_menu_and_process(selected_cluster, analyzed_clusters):
     # Find the index of the selected cluster to remove it later
     cluster_index = analyzed_clusters.index(selected_cluster)
@@ -228,6 +361,7 @@ def present_menu_and_process(selected_cluster, analyzed_clusters):
             return None, analyzed_clusters
 
     if all(key in article_data for key in ['headline', 'haiku', 'story', 'summary']):
+        # Create initial publish data
         publish_data = {
             "AIHeadline": article_data.get('headline', ''),
             "AIHaiku": article_data.get('haiku', ''),
@@ -240,26 +374,65 @@ def present_menu_and_process(selected_cluster, analyzed_clusters):
             "cat": selected_cluster['subject']
         }
 
+        print("\nInitial article data:")
         print(json.dumps(publish_data, indent=2))
         print("\nArticle references:")
         for article in articles_list:
             print(f"- {article['title']} ({article['name_source']}) - {article['link']}")
 
-        # Save the publish.json file
-        with open('publish.json', 'w') as f:
-            json.dump(publish_data, f, indent=2)
+        # Start review process before publishing
+        print(f"\n{Fore.CYAN}Starting review process...{Style.RESET_ALL}")
+        review_result, updates = review_published_article(publish_data)
+        
+        if review_result == 'q':
+            return None, []  # Exit completely
+        elif review_result == 'r':
+            return present_menu_and_process(selected_cluster, analyzed_clusters)  # Retry
+        elif review_result == 'continue' and updates:
+            # Apply review updates to publish_data
+            publish_data.update(updates)
+            print(f"\n{Fore.GREEN}Applied review updates to article data{Style.RESET_ALL}")
             
-        print("\npublish.json has been updated with the new article data.")
+            # Save updated data to publish.json
+            with open('publish.json', 'w') as f:
+                json.dump(publish_data, f, indent=2)
+            
+            print("\nUpdated article data:")
+            print(json.dumps(publish_data, indent=2))
+            
+            # Ask for final approval before publishing
+            while True:
+                print(f"\n{Fore.YELLOW}Ready to publish?")
+                print("y = yes, publish article")
+                print("n = no, discard article")
+                print("r = retry whole process{Style.RESET_ALL}")
+                choice = input("Choice: ").lower()
+                
+                if choice == 'y':
+                    # Generate haiku images and publish
+                    article_id = publish_with_images(publish_data, os.environ.get("PUBLISH_API_KEY"))
+                    if article_id:
+                        print(f"\n{Fore.GREEN}Article successfully published with ID: {article_id}{Style.RESET_ALL}")
+                    else:
+                        print(f"\n{Fore.RED}Failed to publish article{Style.RESET_ALL}")
+                    break
+                elif choice == 'n':
+                    print(f"\n{Fore.YELLOW}Article discarded.{Style.RESET_ALL}")
+                    break
+                elif choice == 'r':
+                    return present_menu_and_process(selected_cluster, analyzed_clusters)
+                else:
+                    print(f"{Fore.RED}Invalid choice. Please use y, n, or r.{Style.RESET_ALL}")
         
         # Remove the processed cluster
         analyzed_clusters.pop(cluster_index)
     else:
-        print("Error: The generated article data is missing required fields.")
+        print(f"{Fore.RED}Error: The generated article data is missing required fields.{Style.RESET_ALL}")
         retry = input("Would you like to retry? (y/n): ").lower()
         if retry == 'y':
             return present_menu_and_process(selected_cluster, analyzed_clusters)
         else:
-            analyzed_clusters.pop(cluster_index)  # Remove the cluster if we're not retrying
+            analyzed_clusters.pop(cluster_index)
             return None, analyzed_clusters
 
     return article_data, analyzed_clusters
