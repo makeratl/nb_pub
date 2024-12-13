@@ -111,13 +111,12 @@ def create_article(cluster):
     
     Sources: {json.dumps(articles_data, indent=2)}"""
 
-    with st.spinner('Generating article...'):
-        article_json = chat_with_codegpt(prompt)
-        try:
-            return json.loads(article_json)
-        except:
-            st.error("Failed to generate article")
-            return None
+    article_json = chat_with_codegpt(prompt)
+    try:
+        return json.loads(article_json)
+    except:
+        st.error("Failed to generate article")
+        return None
 
 def review_article(article_data):
     """Review article using AI evaluation"""
@@ -224,7 +223,19 @@ def display_article_step():
     
     with col2:
         st.markdown("### Haiku")
-        st.markdown(st.session_state.article_data['haiku'])
+        # Add style for paragraph margins and display haiku
+        st.markdown("""
+            <style>
+                .element-container div.stMarkdown p {
+                    margin: 0.5em 0;
+                }
+            </style>
+        """, unsafe_allow_html=True)
+        haiku_lines = st.session_state.article_data['haiku'].split('\n')
+        for i, line in enumerate(haiku_lines):
+            st.markdown(line.strip(), unsafe_allow_html=True)
+            if i < len(haiku_lines) - 1:  # Don't add break after last line
+                st.markdown("<br>", unsafe_allow_html=True)
         
         with st.expander("Source Articles", expanded=False):
             for article in st.session_state.selected_cluster['articles']:
@@ -251,7 +262,19 @@ def display_review_step():
         
         with col2:
             st.markdown("### Haiku")
-            st.markdown(st.session_state.article_data['haiku'])
+            # Add style for paragraph margins and display haiku
+            st.markdown("""
+                <style>
+                    .element-container div.stMarkdown p {
+                        margin: 0.5em 0;
+                    }
+                </style>
+            """, unsafe_allow_html=True)
+            haiku_lines = st.session_state.article_data['haiku'].split('\n')
+            for i, line in enumerate(haiku_lines):
+                st.markdown(line.strip(), unsafe_allow_html=True)
+                if i < len(haiku_lines) - 1:  # Don't add break after last line
+                    st.markdown("<br>", unsafe_allow_html=True)
             
             with st.expander("Source Articles", expanded=False):
                 for article in st.session_state.selected_cluster['articles']:
@@ -353,31 +376,35 @@ def main():
         st.header("Search Controls")
         search_type = st.radio("Search Type", ["Headlines", "Topic"])
         
-        if search_type == "Topic":
-            topic = st.text_input("Enter Topic")
-        
-        time_range = st.select_slider(
-            "Time Range",
-            options=["1h", "12h", "1d", "7d", "30d"],
-            value="1d"
-        )
-        
-        if st.button("Search News"):
-            query = topic if search_type == "Topic" else ""
-            news_data = get_news_data(search_type, query, time_range)
+        # Create a form to handle the Enter key
+        with st.form(key='search_form'):
+            if search_type == "Topic":
+                topic = st.text_input("Enter Topic")
             
-            if news_data:
-                with st.spinner('Analyzing clusters...'):
-                    clusters = []
-                    for cluster in news_data.get('clusters', []):
-                        if cluster.get('cluster_size', 0) >= 3:
-                            analysis = analyze_cluster(cluster)
-                            clusters.append({
-                                **cluster,
-                                **analysis
-                            })
-                    st.session_state.clusters = clusters
-                    st.success(f"Found {len(clusters)} relevant clusters")
+            time_range = st.select_slider(
+                "Time Range",
+                options=["1h", "12h", "1d", "7d", "30d"],
+                value="1d"
+            )
+            
+            submit_button = st.form_submit_button("Search News")
+            
+            if submit_button:
+                query = topic if search_type == "Topic" else ""
+                news_data = get_news_data(search_type, query, time_range)
+                
+                if news_data:
+                    with st.spinner('Analyzing clusters...'):
+                        clusters = []
+                        for cluster in news_data.get('clusters', []):
+                            if cluster.get('cluster_size', 0) >= 3:
+                                analysis = analyze_cluster(cluster)
+                                clusters.append({
+                                    **cluster,
+                                    **analysis
+                                })
+                        st.session_state.clusters = clusters
+                        st.success(f"Found {len(clusters)} relevant clusters")
 
     # Main content area
     col1, col2 = st.columns([2, 3])
