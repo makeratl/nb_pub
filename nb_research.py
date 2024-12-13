@@ -164,6 +164,9 @@ def select_cluster(analyzed_clusters):
             print("Invalid choice. Please try again.")
 
 def present_menu_and_process(selected_cluster, analyzed_clusters):
+    # Find the index of the selected cluster to remove it later
+    cluster_index = analyzed_clusters.index(selected_cluster)
+    
     # Prepare data for the CodeGPT agent
     articles_data = {}
     seen_headlines = set()
@@ -194,7 +197,7 @@ def present_menu_and_process(selected_cluster, analyzed_clusters):
             print(f"{color}{i}. {title} ({source}){Style.RESET_ALL}")
         
         override = input("Do you want to process this cluster anyway? (y/n): ").lower()
-        analyzed_clusters.remove(selected_cluster)
+        analyzed_clusters.pop(cluster_index)  # Remove the cluster
         if override != 'y':
             return None, analyzed_clusters
 
@@ -209,6 +212,7 @@ def present_menu_and_process(selected_cluster, analyzed_clusters):
         if retry == 'y':
             return present_menu_and_process(selected_cluster, analyzed_clusters)
         else:
+            analyzed_clusters.pop(cluster_index)  # Remove the cluster if we're not retrying
             return None, analyzed_clusters
 
     try:
@@ -220,6 +224,7 @@ def present_menu_and_process(selected_cluster, analyzed_clusters):
         if retry == 'y':
             return present_menu_and_process(selected_cluster, analyzed_clusters)
         else:
+            analyzed_clusters.pop(cluster_index)  # Remove the cluster if we're not retrying
             return None, analyzed_clusters
 
     if all(key in article_data for key in ['headline', 'haiku', 'story', 'summary']):
@@ -240,17 +245,21 @@ def present_menu_and_process(selected_cluster, analyzed_clusters):
         for article in articles_list:
             print(f"- {article['title']} ({article['name_source']}) - {article['link']}")
 
-        # Save the publish_data to publish.json
+        # Save the publish.json file
         with open('publish.json', 'w') as f:
             json.dump(publish_data, f, indent=2)
             
         print("\npublish.json has been updated with the new article data.")
+        
+        # Remove the processed cluster
+        analyzed_clusters.pop(cluster_index)
     else:
         print("Error: The generated article data is missing required fields.")
         retry = input("Would you like to retry? (y/n): ").lower()
         if retry == 'y':
             return present_menu_and_process(selected_cluster, analyzed_clusters)
         else:
+            analyzed_clusters.pop(cluster_index)  # Remove the cluster if we're not retrying
             return None, analyzed_clusters
 
     return article_data, analyzed_clusters
