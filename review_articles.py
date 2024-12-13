@@ -204,10 +204,10 @@ def evaluate_article_with_ai(article: dict) -> Optional[dict]:
 
 def display_article(article: dict):
     """Display article information in a formatted way"""
-    print("\n" + "="*80)
-    print(f"{Fore.YELLOW}Article ID: {article['ID']}{Style.RESET_ALL}")
-    print(f"{Fore.CYAN}Headline:{Style.RESET_ALL} {article['AIHeadline']}")
-    print("="*80)
+    # print("\n" + "="*80)
+    # print(f"{Fore.YELLOW}Article ID: {article['ID']}{Style.RESET_ALL}")
+    # print(f"{Fore.CYAN}Headline:{Style.RESET_ALL} {article['AIHeadline']}")
+    # print("="*80)
 
 def display_evaluation(evaluation: dict):
     """Display the AI evaluation results in a formatted way"""
@@ -223,8 +223,10 @@ def display_evaluation(evaluation: dict):
     print(f"\n{Fore.GREEN}Recommendations:{Style.RESET_ALL}")
     print(evaluation.get('recommendations', 'No recommendations available'))
     
-    print(f"\n{Fore.GREEN}Reasoning:{Style.RESET_ALL}")
-    print(evaluation.get('reasoning', 'No reasoning provided'))
+    # Only show reasoning if the article is recommended for rejection
+    if evaluation.get('recommendations', '').lower() == 'rejected':
+        print(f"\n{Fore.GREEN}Rejection Reasoning:{Style.RESET_ALL}")
+        print(evaluation.get('reasoning', 'No reasoning provided'))
     
     print("="*80)
 

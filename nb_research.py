@@ -17,6 +17,7 @@ init(autoreset=True)
 API_KEY = os.environ.get("NEWSCATCHER_API_KEY")
 
 def get_latest_headlines(when="1d"):
+    print(f"\n{Fore.CYAN}Fetching headlines...{Style.RESET_ALL}")
     url = "https://v3-api.newscatcherapi.com/api/latest_headlines"
     params = {
         "when": when,
@@ -42,12 +43,9 @@ def get_latest_headlines(when="1d"):
         response.raise_for_status()  # This will raise an HTTPError for bad responses
         data = response.json()
         if 'status' in data and data['status'] == 'error':
-            print(f"API returned an error: {data.get('message', 'Unknown error')}")
+            print(f"\n{Fore.RED}API Error: {data.get('message', 'Unknown error')}{Style.RESET_ALL}")
             return None
-        total_hits = data.get('total_hits', 0)
-        clusters_count = data.get('clusters_count', 0)
-        print(f"Total articles found: {total_hits}")
-        print(f"Number of clusters: {clusters_count}")
+        print(f"\n{Fore.GREEN}Found {data.get('total_hits', 0)} articles in {data.get('clusters_count', 0)} clusters{Style.RESET_ALL}")
         return data
     except requests.exceptions.HTTPError as http_err:
         print(f"HTTP Error occurred: {http_err}")
@@ -129,43 +127,30 @@ def analyze_clusters(headlines_data):
     return analyzed_clusters
 
 def select_cluster(analyzed_clusters):
-    print("Available news clusters:")
-    for i, cluster in enumerate(analyzed_clusters, 1):
-        bias = cluster['bias']
-        if bias < 0:
-            bias_color = Fore.BLUE
-        elif bias > 0:
-            bias_color = Fore.RED
-        else:
-            bias_color = Fore.WHITE
-        
-        print(f"{i}. {cluster['subject']} ({cluster['category']}) - {cluster['article_count']} articles - Bias: {bias_color}{bias:.2f}{Style.RESET_ALL}")
+    display_cluster_list(analyzed_clusters)
     
     while True:
-        choice = int(input("Enter the number of the cluster you want to process (or 0 to start over): ")) - 1
-        if choice == -1:
-            return None
-        if 0 <= choice < len(analyzed_clusters):
-            selected_cluster = analyzed_clusters[choice]
-            if selected_cluster['article_count'] < 3:
-                print(f"Warning: This cluster has only {selected_cluster['article_count']} articles.")
-                print("\nAvailable articles:")
-                for i, article in enumerate(selected_cluster['articles'], 1):
-                    print(f"{i}. {article['title']} ({article['name_source']})")
-                
-                override = input("Do you want to process this cluster anyway? (y/n): ").lower()
-                if override == 'y':
-                    return selected_cluster
-                else:
-                    analyzed_clusters.pop(choice)
-                    if not analyzed_clusters:
-                        print("No more clusters available.")
-                        return None
-                    print("Cluster removed. Please choose another cluster.")
-            else:
+        try:
+            choice = input(f"\n{Fore.YELLOW}Select cluster (0 to start over):{Style.RESET_ALL} ")
+            if not choice.strip():
+                continue
+            choice = int(choice) - 1
+            if choice == -1:
+                return None
+            if 0 <= choice < len(analyzed_clusters):
+                selected_cluster = analyzed_clusters[choice]
+                if selected_cluster['article_count'] < 3:
+                    print(f"\n{Fore.YELLOW}Warning: Only {selected_cluster['article_count']} articles in cluster.{Style.RESET_ALL}")
+                    if input("Process anyway? (y/n): ").lower() != 'y':
+                        analyzed_clusters.pop(choice)
+                        if not analyzed_clusters:
+                            print(f"\n{Fore.RED}No more clusters available.{Style.RESET_ALL}")
+                            return None
+                        return select_cluster(analyzed_clusters)
                 return selected_cluster
-        else:
-            print("Invalid choice. Please try again.")
+            print(f"{Fore.RED}Invalid choice. Please select 0-{len(analyzed_clusters)}{Style.RESET_ALL}")
+        except ValueError:
+            print(f"{Fore.RED}Please enter a number{Style.RESET_ALL}")
 
 def publish_with_images(publish_data, api_key):
     """Publish article with generated haiku images"""
@@ -207,11 +192,11 @@ def publish_with_images(publish_data, api_key):
 
 def review_published_article(publish_data):
     """Review an article before publication"""
-    print(f"\n{Fore.CYAN}Starting article review process...{Style.RESET_ALL}")
+    # print(f"\n{Fore.CYAN}Starting article review process...{Style.RESET_ALL}")
     
     # Convert publish_data to match the format expected by review_articles
     article = {
-        'ID': 'DRAFT',  # This is a draft article
+        'ID': 'DRAFT',
         'AIHeadline': publish_data.get('AIHeadline', ''),
         'AIStory': publish_data.get('AIStory', ''),
         'cat': publish_data.get('cat', ''),
@@ -224,8 +209,6 @@ def review_published_article(publish_data):
     # Display article
     display_article(article)
     
-    # Get AI evaluation
-    print("\nRequesting AI evaluation...")
     try:
         evaluation = evaluate_article_with_ai(article)
         
@@ -374,68 +357,78 @@ def present_menu_and_process(selected_cluster, analyzed_clusters):
             "cat": selected_cluster['subject']
         }
 
-        print("\nInitial article data:")
-        print(json.dumps(publish_data, indent=2))
-        print("\nArticle references:")
-        for article in articles_list:
-            print(f"- {article['title']} ({article['name_source']}) - {article['link']}")
+        # Display initial article
+        display_article_preview(publish_data, articles_list)
 
-        # Start review process before publishing
-        print(f"\n{Fore.CYAN}Starting review process...{Style.RESET_ALL}")
+        # Review process
         review_result, updates = review_published_article(publish_data)
         
         if review_result == 'q':
-            return None, []  # Exit completely
+            return None, []
         elif review_result == 'r':
-            return present_menu_and_process(selected_cluster, analyzed_clusters)  # Retry
+            return present_menu_and_process(selected_cluster, analyzed_clusters)
         elif review_result == 'continue' and updates:
-            # Apply review updates to publish_data
+            # Apply updates silently
             publish_data.update(updates)
-            print(f"\n{Fore.GREEN}Applied review updates to article data{Style.RESET_ALL}")
-            
-            # Save updated data to publish.json
             with open('publish.json', 'w') as f:
                 json.dump(publish_data, f, indent=2)
             
-            print("\nUpdated article data:")
-            print(json.dumps(publish_data, indent=2))
-            
-            # Ask for final approval before publishing
-            while True:
-                print(f"\n{Fore.YELLOW}Ready to publish?")
-                print("y = yes, publish article")
-                print("n = no, discard article")
-                print("r = retry whole process{Style.RESET_ALL}")
-                choice = input("Choice: ").lower()
-                
-                if choice == 'y':
-                    # Generate haiku images and publish
-                    article_id = publish_with_images(publish_data, os.environ.get("PUBLISH_API_KEY"))
-                    if article_id:
-                        print(f"\n{Fore.GREEN}Article successfully published with ID: {article_id}{Style.RESET_ALL}")
-                    else:
-                        print(f"\n{Fore.RED}Failed to publish article{Style.RESET_ALL}")
-                    break
-                elif choice == 'n':
-                    print(f"\n{Fore.YELLOW}Article discarded.{Style.RESET_ALL}")
-                    break
-                elif choice == 'r':
-                    return present_menu_and_process(selected_cluster, analyzed_clusters)
-                else:
-                    print(f"{Fore.RED}Invalid choice. Please use y, n, or r.{Style.RESET_ALL}")
+            # Move directly to publication
+            article_id = publish_with_images(publish_data, os.environ.get("PUBLISH_API_KEY"))
+            if article_id:
+                print(f"\n{Fore.GREEN}Published successfully! ID: {article_id}{Style.RESET_ALL}")
         
-        # Remove the processed cluster
-        analyzed_clusters.pop(cluster_index)
+        analyzed_clusters.pop(analyzed_clusters.index(selected_cluster))
     else:
-        print(f"{Fore.RED}Error: The generated article data is missing required fields.{Style.RESET_ALL}")
-        retry = input("Would you like to retry? (y/n): ").lower()
-        if retry == 'y':
+        print(f"\n{Fore.RED}Error: Missing required article fields{Style.RESET_ALL}")
+        if input("Retry? (y/n): ").lower() == 'y':
             return present_menu_and_process(selected_cluster, analyzed_clusters)
-        else:
-            analyzed_clusters.pop(cluster_index)
-            return None, analyzed_clusters
+        analyzed_clusters.pop(analyzed_clusters.index(selected_cluster))
+        return None, analyzed_clusters
 
     return article_data, analyzed_clusters
+
+def display_cluster_list(analyzed_clusters):
+    """Display available clusters in a clean format"""
+    print(f"\n{Fore.CYAN}Available News Clusters:{Style.RESET_ALL}")
+    print("=" * 80)
+    for i, cluster in enumerate(analyzed_clusters, 1):
+        bias = cluster['bias']
+        bias_color = Fore.BLUE if bias < 0 else (Fore.RED if bias > 0 else Fore.WHITE)
+        
+        print(f"{i:2d}. {Fore.YELLOW}{cluster['subject']}{Style.RESET_ALL}")
+        print(f"    Category: {cluster['category']}")
+        print(f"    Articles: {cluster['article_count']}")
+        print(f"    Bias: {bias_color}{bias:.2f}{Style.RESET_ALL}")
+        print("-" * 40)
+
+def display_article_preview(publish_data, articles_list):
+    """Display article preview in a clean format"""
+    print("\n" + "=" * 80)
+    print(f"{Fore.CYAN}Article Preview:{Style.RESET_ALL}")
+    print("-" * 80)
+    print(f"{Fore.YELLOW}Headline:{Style.RESET_ALL} {publish_data['AIHeadline']}")
+    print(f"\n{Fore.YELLOW}Summary:{Style.RESET_ALL}\n{publish_data['AISummary']}")
+    # print(f"\n{Fore.YELLOW}Sources:{Style.RESET_ALL}")
+    # for article in articles_list:
+    #     print(f"- {article['name_source']}: {article['title']}")
+    print("=" * 80)
+
+def display_review_results(updates):
+    """Display review updates in a clean format"""
+    print(f"\n{Fore.CYAN}Review Results:{Style.RESET_ALL}")
+    print("-" * 80)
+    if 'cat' in updates:
+        print(f"Category: {updates['cat']}")
+    if 'topic' in updates:
+        print(f"Topic: {updates['topic']}")
+    if 'bs_p' in updates:
+        print(f"Bias Score: {updates['bs_p']}")
+    if 'qas' in updates:
+        print(f"Quality Score: {updates['qas']}")
+    if 'AISummary' in updates:
+        print(f"\nAnalysis:\n{updates['AISummary']}")
+    print("-" * 80)
 
 def main():
     while True:

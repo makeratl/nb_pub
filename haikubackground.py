@@ -80,7 +80,7 @@ def add_text_to_image(image_path, haiku, ai_headline, article_date, font_path, i
                 break
             font_size -= 1
         
-        print(f"Selected font size: {font_size}")
+        # print(f"Selected font size: {font_size}")
         
         font = ImageFont.truetype(font_path, font_size)
         
@@ -152,12 +152,12 @@ def add_text_to_image(image_path, haiku, ai_headline, article_date, font_path, i
         return output_path
 
 def generate_haiku_background(haiku, ai_headline, article_date):
-    print(f"Received haiku:\n{haiku}\n")
-    print("Generating image prompt based on the haiku...")
+    # print(f"Received haiku:\n{haiku}\n")
+    # print("Generating image prompt based on the haiku...")
     image_prompt = generate_image_prompt(haiku)
-    print(f"\nGenerated image prompt:\n{image_prompt}\n")
+    # print(f"\nGenerated image prompt:\n{image_prompt}\n")
     result = generate_image(image_prompt)
-    print(result)
+    # print(result)
 
     if "Image generated and saved as" in result:
         font_path = os.path.join(os.path.dirname(__file__), "fonts", "NotoSerif-BoldItalic.ttf")
