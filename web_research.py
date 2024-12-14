@@ -48,6 +48,7 @@ import json
 from dotenv import load_dotenv
 import os
 import time
+import math  # Add this import
 from review_articles import evaluate_article_with_ai, display_evaluation
 from publish_utils import generate_and_encode_images, publish_article
 import logging
@@ -1154,87 +1155,86 @@ def get_bias_color(bias_value):
             try:
                 bias = float(bias_value)
             except ValueError:
-                return '#4A6FA5'  # Default theme blue for non-numeric strings
+                return 'rgba(28, 28, 28, 0.95)'  # Default dark background for non-numeric strings
         else:
             bias = float(bias_value)
         
         # Clamp value between -1 and 1
         bias = max(-1.0, min(1.0, bias))
         
-        if bias < -0.6: return '#2962FF'      # Far Left
-        elif bias < -0.3: return '#2196F3'    # Left
-        elif bias < -0.1: return '#03A9F4'    # Center Left
-        elif bias <= 0.1: return '#4A6FA5'    # Neutral
-        elif bias <= 0.3: return '#FF6B6B'    # Center Right (Light Red)
-        elif bias <= 0.6: return '#E53935'    # Right (Medium Red)
-        else: return '#B71C1C'                # Far Right (Deep Red)
+        # Return rgba colors with opacity
+        if bias < -0.6: return 'rgba(41, 98, 255, 0.15)'     # Far Left
+        elif bias < -0.3: return 'rgba(33, 150, 243, 0.15)'   # Left
+        elif bias < -0.1: return 'rgba(3, 169, 244, 0.15)'    # Center Left
+        elif bias <= 0.1: return 'rgba(28, 28, 28, 0.95)'     # Neutral
+        elif bias <= 0.3: return 'rgba(255, 107, 107, 0.15)'  # Center Right
+        elif bias <= 0.6: return 'rgba(229, 57, 53, 0.15)'    # Right
+        else: return 'rgba(183, 28, 28, 0.15)'               # Far Right
             
     except (ValueError, TypeError):
-        return '#4A6FA5'  # Default theme blue for any errors
+        return 'rgba(28, 28, 28, 0.95)'  # Default dark background for any errors
 
-def format_latest_headlines(headlines, selected_category=None):
-    """Format headlines with metadata for sidebar display"""
+def format_latest_headlines(headlines, selected_category=None, page=1, per_page=5):
+    """Format headlines with metadata for sidebar display with pagination"""
     # Filter headlines if category is selected
     if selected_category and selected_category != "All Categories":
         filtered_headlines = [h for h in headlines if h.get('cat', '').title() == selected_category]
     else:
         filtered_headlines = headlines
     
+    # Paginate filtered headlines
+    total_pages = math.ceil(len(filtered_headlines) / per_page)
+    start_idx = (page - 1) * per_page
+    end_idx = start_idx + per_page
+    page_headlines = filtered_headlines[start_idx:end_idx]
+    
     st.markdown("""
         <style>
             .headline-item {
-                padding: 0.5rem;
-                margin-bottom: 0.5rem;
-                background: rgba(28, 28, 28, 0.95);
-                border: 1px solid rgba(74, 111, 165, 0.1);
-                border-radius: 4px;
+                padding: 0.4rem 0.5rem;  /* Reduced padding */
+                margin-bottom: 0.25rem;   /* Reduced margin between cards */
+                border-radius: 3px;      /* Slightly smaller radius */
                 transition: all 0.2s ease;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                position: relative;
+            }
+            .headline-text {
+                color: rgba(255, 255, 255, 0.95);
+                font-size: 0.8em;        /* Slightly smaller font */
+                line-height: 1.2;        /* Tighter line height */
+                margin-bottom: 0.25rem;   /* Reduced space before metadata */
+                font-weight: 500;
             }
             .headline-metadata {
                 display: flex;
                 align-items: center;
-                gap: 0.5rem;
-                margin-bottom: 0.25rem;
-                font-size: 0.65em;
+                gap: 0.5rem;             /* Reduced gap between metadata items */
+                font-size: 0.65em;       /* Smaller metadata text */
+                color: rgba(255, 255, 255, 0.6);
+                line-height: 1;          /* Minimum line height */
             }
             .headline-category {
                 color: rgba(192, 160, 128, 0.95);
                 text-transform: uppercase;
                 font-weight: 500;
-            }
-            .headline-bias {
-                width: 8px;
-                height: 8px;
-                border-radius: 50%;
-                margin-left: auto;
-            }
-            .headline-text {
-                color: rgba(255, 255, 255, 0.95);
-                font-size: 0.8em;
-                line-height: 1.3;
-                margin-bottom: 0.25rem;
-            }
-            .headline-footer {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                font-size: 0.65em;
+                font-size: 0.9em;
             }
             .headline-topic {
                 color: rgba(74, 111, 165, 0.95);
             }
             .headline-date {
+                margin-left: auto;
                 color: rgba(255, 255, 255, 0.5);
             }
             .headline-list {
-                margin-top: 0.5rem;
+                margin-top: 0.25rem;     /* Reduced top margin */
             }
         </style>
     """, unsafe_allow_html=True)
     
     headlines_html = '<div class="headline-list">'
     
-    for article in filtered_headlines:
+    for article in page_headlines:
         try:
             published_date = pd.to_datetime(article['Published']).strftime('%b %d')
         except:
@@ -1245,20 +1245,18 @@ def format_latest_headlines(headlines, selected_category=None):
         category = article.get('cat', '').title()
         topic = article.get('topic', '').title()
         
-        headlines_html += f"""<div class="headline-item">
-            <div class="headline-metadata">
-                <span class="headline-category">{category}</span>
-                <span class="headline-bias" style="background-color: {bias_color}" title="Bias: {bias}"></span>
-            </div>
-            <div class="headline-text">{article['AIHeadline']}</div>
-            <div class="headline-footer">
-                <span class="headline-topic">{topic}</span>
-                <span class="headline-date">{published_date}</span>
-            </div>
-        </div>"""
+        headlines_html += f"""
+            <div class="headline-item" style="background-color: {bias_color}">
+                <div class="headline-text">{article['AIHeadline']}</div>
+                <div class="headline-metadata">
+                    <span class="headline-category">{category}</span>
+                    <span class="headline-topic">{topic}</span>
+                    <span class="headline-date">{published_date}</span>
+                </div>
+            </div>"""
     
     headlines_html += '</div>'
-    return headlines_html
+    return headlines_html, total_pages
 
 def create_custom_progress_bar(bias_value, i):
     """Create a custom HTML progress bar with proper color styling"""
@@ -1375,6 +1373,117 @@ def fetch_latest_headlines():
     except Exception as e:
         st.error(f"Error fetching headlines: {str(e)}")
         return []
+
+def get_bias_color(bias_value):
+    """Generate color for bias value from -1 to 1"""
+    try:
+        # Handle string numeric values
+        if isinstance(bias_value, str):
+            try:
+                bias = float(bias_value)
+            except ValueError:
+                return 'rgba(28, 28, 28, 0.95)'  # Default dark background for non-numeric strings
+        else:
+            bias = float(bias_value)
+        
+        # Clamp value between -1 and 1
+        bias = max(-1.0, min(1.0, bias))
+            
+        # Return rgba colors with opacity
+        if bias < -0.6: return 'rgba(41, 98, 255, 0.15)'     # Far Left
+        elif bias < -0.3: return 'rgba(33, 150, 243, 0.15)'   # Left
+        elif bias < -0.1: return 'rgba(3, 169, 244, 0.15)'    # Center Left
+        elif bias <= 0.1: return 'rgba(28, 28, 28, 0.95)'     # Neutral
+        elif bias <= 0.3: return 'rgba(255, 107, 107, 0.15)'  # Center Right
+        elif bias <= 0.6: return 'rgba(229, 57, 53, 0.15)'    # Right
+        else: return 'rgba(183, 28, 28, 0.15)'               # Far Right
+            
+    except (ValueError, TypeError):
+        return 'rgba(28, 28, 28, 0.95)'  # Default dark background for any errors
+
+def format_latest_headlines(headlines, selected_category=None, page=1, per_page=5):
+    """Format headlines with metadata for sidebar display with pagination"""
+    # Filter headlines if category is selected
+    if selected_category and selected_category != "All Categories":
+        filtered_headlines = [h for h in headlines if h.get('cat', '').title() == selected_category]
+    else:
+        filtered_headlines = headlines
+    
+    # Paginate filtered headlines
+    total_pages = math.ceil(len(filtered_headlines) / per_page)
+    start_idx = (page - 1) * per_page
+    end_idx = start_idx + per_page
+    page_headlines = filtered_headlines[start_idx:end_idx]
+    
+    st.markdown("""
+        <style>
+            .headline-item {
+                padding: 0.4rem 0.5rem;  /* Reduced padding */
+                margin-bottom: 0.25rem;   /* Reduced margin between cards */
+                border-radius: 3px;      /* Slightly smaller radius */
+                transition: all 0.2s ease;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                position: relative;
+            }
+            .headline-text {
+                color: rgba(255, 255, 255, 0.95);
+                font-size: 0.8em;        /* Slightly smaller font */
+                line-height: 1.2;        /* Tighter line height */
+                margin-bottom: 0.25rem;   /* Reduced space before metadata */
+                font-weight: 500;
+            }
+            .headline-metadata {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;             /* Reduced gap between metadata items */
+                font-size: 0.65em;       /* Smaller metadata text */
+                color: rgba(255, 255, 255, 0.6);
+                line-height: 1;          /* Minimum line height */
+            }
+            .headline-category {
+                color: rgba(192, 160, 128, 0.95);
+                text-transform: uppercase;
+                font-weight: 500;
+                font-size: 0.9em;
+            }
+            .headline-topic {
+                color: rgba(74, 111, 165, 0.95);
+            }
+            .headline-date {
+                margin-left: auto;
+                color: rgba(255, 255, 255, 0.5);
+            }
+            .headline-list {
+                margin-top: 0.25rem;     /* Reduced top margin */
+            }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    headlines_html = '<div class="headline-list">'
+    
+    for article in page_headlines:
+        try:
+            published_date = pd.to_datetime(article['Published']).strftime('%b %d')
+        except:
+            published_date = "Recent"
+            
+        bias = article.get('bs_p', 'Neutral')
+        bias_color = get_bias_color(bias)
+        category = article.get('cat', '').title()
+        topic = article.get('topic', '').title()
+        
+        headlines_html += f"""
+            <div class="headline-item" style="background-color: {bias_color}">
+                <div class="headline-text">{article['AIHeadline']}</div>
+                <div class="headline-metadata">
+                    <span class="headline-category">{category}</span>
+                    <span class="headline-topic">{topic}</span>
+                    <span class="headline-date">{published_date}</span>
+                </div>
+            </div>"""
+    
+    headlines_html += '</div>'
+    return headlines_html, total_pages
 
 def get_category_counts(headlines):
     """Count categories and sort by frequency"""
@@ -1745,53 +1854,46 @@ def main():
                     padding-left: 0;
                 }
                 .headline-item {
-                    padding: 0.0rem;
+                    padding: 0.75rem;
                     margin-bottom: 0.5rem;
-                    background: rgba(28, 28, 28, 0.95);
-                    border: 1px solid rgba(74, 111, 165, 0.1);
                     border-radius: 4px;
                     transition: all 0.2s ease;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    position: relative;
                 }
                 .headline-item:hover {
-                    background: rgba(28, 28, 28, 1);
-                    border-color: rgba(74, 111, 165, 0.2);
+                    border-color: rgba(255, 255, 255, 0.2);
                     transform: translateY(-1px);
+                }
+                .headline-text {
+                    color: rgba(255, 255, 255, 0.95);
+                    font-size: 0.85em;
+                    line-height: 1.4;
+                    margin-bottom: 0.5rem;
+                    font-weight: 500;
                 }
                 .headline-metadata {
                     display: flex;
                     align-items: center;
-                    gap: 0.2rem;
-                    margin-bottom: 0.25rem;
-                    font-size: 0.65em;
+                    gap: 0.75rem;
+                    font-size: 0.7em;
+                    color: rgba(255, 255, 255, 0.6);
                 }
                 .headline-category {
                     color: rgba(192, 160, 128, 0.95);
                     text-transform: uppercase;
                     font-weight: 500;
-                }
-                .headline-bias {
-                    width: 8px;
-                    height: 8px;
-                    border-radius: 50%;
-                    margin-left: auto;
-                }
-                .headline-text {
-                    color: rgba(255, 255, 255, 0.95);
-                    font-size: 0.8em;
-                    line-height: 1.3;
-                    margin-bottom: 0.25rem;
-                }
-                .headline-footer {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    font-size: 0.65em;
+                    font-size: 0.9em;
                 }
                 .headline-topic {
                     color: rgba(74, 111, 165, 0.95);
                 }
                 .headline-date {
+                    margin-left: auto;
                     color: rgba(255, 255, 255, 0.5);
+                }
+                .headline-list {
+                    margin-top: 0.5rem;
                 }
             </style>
             <div class="latest-headlines">
@@ -1814,9 +1916,44 @@ def main():
                 label_visibility="collapsed"
             )
             
-            # Display filtered headlines
-            headlines_html = format_latest_headlines(headlines, selected_category)
+            # Initialize page number in session state if not exists
+            if 'headline_page' not in st.session_state:
+                st.session_state.headline_page = 1
+            
+            # Display filtered headlines with pagination
+            headlines_html, total_pages = format_latest_headlines(
+                headlines, 
+                selected_category, 
+                st.session_state.headline_page
+            )
             st.markdown(headlines_html, unsafe_allow_html=True)
+            
+            # Pagination controls
+            col1, col2, col3 = st.columns([1, 2, 1])
+            
+            with col1:
+                if st.button("←", disabled=st.session_state.headline_page <= 1):
+                    st.session_state.headline_page -= 1
+                    st.rerun()
+            
+            with col2:
+                st.markdown(
+                    f'<div style="text-align: center; color: rgba(255,255,255,0.8);">'
+                    f'Page {st.session_state.headline_page} of {total_pages}'
+                    f'</div>',
+                    unsafe_allow_html=True
+                )
+            
+            with col3:
+                if st.button("→", disabled=st.session_state.headline_page >= total_pages):
+                    st.session_state.headline_page += 1
+                    st.rerun()
+            
+            # Reset page number when category changes
+            if selected_category != st.session_state.get('last_category'):
+                st.session_state.headline_page = 1
+                st.session_state.last_category = selected_category
+                st.rerun()
         else:
             st.caption("No recent headlines available")
 
