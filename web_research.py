@@ -1176,7 +1176,9 @@ def format_latest_headlines(headlines, selected_category=None):
     """Format headlines with metadata for sidebar display"""
     # Filter headlines if category is selected
     if selected_category and selected_category != "All Categories":
-        headlines = [h for h in headlines if h.get('cat', '').title() == selected_category]
+        filtered_headlines = [h for h in headlines if h.get('cat', '').title() == selected_category]
+    else:
+        filtered_headlines = headlines
     
     st.markdown("""
         <style>
@@ -1224,14 +1226,17 @@ def format_latest_headlines(headlines, selected_category=None):
             .headline-date {
                 color: rgba(255, 255, 255, 0.5);
             }
+            .headline-list {
+                margin-top: 0.5rem;
+            }
         </style>
     """, unsafe_allow_html=True)
     
     headlines_html = '<div class="headline-list">'
     
-    for article in headlines:
+    for article in filtered_headlines:
         try:
-            published_date = pd.to_datetime(article['Published']).strftime('%b %d')  # Shorter date format
+            published_date = pd.to_datetime(article['Published']).strftime('%b %d')
         except:
             published_date = "Recent"
             
@@ -1241,16 +1246,16 @@ def format_latest_headlines(headlines, selected_category=None):
         topic = article.get('topic', '').title()
         
         headlines_html += f"""<div class="headline-item">
-<div class="headline-metadata">
-<span class="headline-category">{category}</span>
-<span class="headline-bias" style="background-color: {bias_color}" title="Bias: {bias}"></span>
-</div>
-<div class="headline-text">{article['AIHeadline']}</div>
-<div class="headline-footer">
-<span class="headline-topic">{topic}</span>
-<span class="headline-date">{published_date}</span>
-</div>
-</div>"""
+            <div class="headline-metadata">
+                <span class="headline-category">{category}</span>
+                <span class="headline-bias" style="background-color: {bias_color}" title="Bias: {bias}"></span>
+            </div>
+            <div class="headline-text">{article['AIHeadline']}</div>
+            <div class="headline-footer">
+                <span class="headline-topic">{topic}</span>
+                <span class="headline-date">{published_date}</span>
+            </div>
+        </div>"""
     
     headlines_html += '</div>'
     return headlines_html
@@ -1341,7 +1346,7 @@ def display_wizard_content():
                 display_final_review()
 
 def fetch_latest_headlines():
-    """Fetch the latest 10 headlines from the API"""
+    """Fetch all headlines from the API"""
     try:
         api_key = os.environ.get("PUBLISH_API_KEY")
         http = urllib3.PoolManager()
@@ -1364,7 +1369,8 @@ def fetch_latest_headlines():
             headers=headers
         )
         
-        return json.loads(response.data.decode('utf-8'))[:10] if response.status == 200 else []
+        # Return all headlines instead of limiting to 10
+        return json.loads(response.data.decode('utf-8')) if response.status == 200 else []
         
     except Exception as e:
         st.error(f"Error fetching headlines: {str(e)}")
