@@ -335,23 +335,111 @@ def display_article_step():
                 st.session_state.current_step = 2
                 st.rerun()
     
-    st.markdown("<div style='margin: 0.75rem 0;'><hr style='margin: 0;'></div>", unsafe_allow_html=True)  # Tighter divider
+    # Group sources by domain/publisher
+    source_groups = {}
+    for article in st.session_state.selected_cluster['articles']:
+        source = article['name_source']
+        if source in source_groups:
+            source_groups[source] += 1
+        else:
+            source_groups[source] = 1
     
-    # Main content
-    col1, col2 = st.columns([2, 1])
+    # Sort sources by frequency
+    sorted_sources = sorted(source_groups.items(), key=lambda x: x[1], reverse=True)
+    
+    # Display source tags with custom styling
+    st.markdown("""
+    <style>
+        .source-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 1rem;
+        }
+        .source-tag {
+            background-color: rgba(74, 111, 165, 0.1);
+            border: 1px solid rgba(74, 111, 165, 0.3);
+            border-radius: 16px;
+            padding: 4px 12px;
+            font-size: 0.9em;
+            color: #4a6fa5;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .source-count {
+            background-color: rgba(74, 111, 165, 0.2);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+    </style>
+    <div class="source-tags">
+    """, unsafe_allow_html=True)
+    
+    # Generate tag HTML
+    tags_html = ""
+    for source, count in sorted_sources:
+        tags_html += f"""
+        <div class="source-tag">
+            {source}
+            <span class="source-count">{count}</span>
+        </div>
+        """
+    st.markdown(tags_html + "</div>", unsafe_allow_html=True)
+    
+    # Main content - swapped columns
+    col1, col2 = st.columns([1, 2.8])  # Adjusted column ratio to give haiku more width
+    
     with col1:
+        haiku_lines = st.session_state.article_data['haiku'].split('\n')
+        st.markdown(f"""
+            <style>
+                .haiku-container {{
+                    background-color: #f8f9fa;
+                    border: 1px solid rgba(74, 111, 165, 0.1);
+                    border-radius: 8px;
+                    padding: 1rem;
+                    margin-top: 0.5rem;
+                    display: inline-block;
+                    width: auto;
+                }}
+                .haiku-title {{
+                    font-size: 1rem;
+                    color: #4a6fa5;
+                    margin-bottom: 0.75rem;
+                    font-weight: 500;
+                }}
+                .haiku-text {{
+                    font-size: 0.9rem;
+                    font-style: italic;
+                    color: #2c3e50;
+                    line-height: 1.5;
+                    white-space: nowrap;
+                }}
+            </style>
+            <div class="haiku-container">
+                <div class="haiku-title">Haiku</div>
+                <div class="haiku-text">
+                    {haiku_lines[0].strip()}<br>
+                    {haiku_lines[1].strip()}<br>
+                    {haiku_lines[2].strip()}
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
         st.markdown("#### Summary")
         st.markdown(st.session_state.article_data['summary'])
         
         with st.expander("Full Story", expanded=False):
             st.markdown(st.session_state.article_data['story'], unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown("#### Haiku")
-        # Add style for paragraph margins and display haiku 
-        haiku_lines = st.session_state.article_data['haiku'].split('\n')
-        st.write(f"{haiku_lines[0].strip()}<br>{haiku_lines[1].strip()}<br>{haiku_lines[2].strip()}", unsafe_allow_html=True)
-        
+            
         with st.expander("Source Articles", expanded=False):
             for article in st.session_state.selected_cluster['articles']:
                 st.markdown(f"- [{article['title']}]({article['link']}) - {article['name_source']}")
@@ -480,10 +568,9 @@ def display_image_step():
             st.session_state.current_step = 4
             st.rerun()
     
-    st.markdown("---")  # Divider
     
     # Main content
-    st.markdown("### Haiku Visualization")
+    st.markdown("#### Haiku Visualization")
     if st.session_state.haiku_image is None:
         with st.spinner("Generating initial haiku image..."):
             image_data, image_haiku = generate_haiku_images(
@@ -500,7 +587,20 @@ def display_image_step():
             else:
                 st.error("Failed to generate haiku image")
     else:
-        st.image(st.session_state.haiku_image, caption="Generated Haiku Image")
+        container_style = """
+            <style>
+                [data-testid="stImage"] {
+                    width: 80%;
+                    margin: 0 auto;
+                    display: block;
+                }
+                [data-testid="stImage"] img {
+                    border-radius: 8px;
+                }
+            </style>
+        """
+        st.markdown(container_style, unsafe_allow_html=True)
+        st.image(st.session_state.haiku_image, caption="Generated Haiku Image", use_container_width=False)
 
 def display_final_review():
     """Display final review before publication"""
