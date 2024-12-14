@@ -1,3 +1,44 @@
+"""
+AI News Brew Research Web Interface
+
+Key Data Format Notes:
+1. Bias Values (bs_p):
+   - Numeric values ranging from -1.0 to 1.0
+   - Negative values indicate left-leaning bias
+   - Positive values indicate right-leaning bias
+   - Color mapping:
+     * Far Left   (-1.0 to -0.6): Deep Blue (#2962FF)
+     * Left       (-0.6 to -0.3): Blue (#2196F3)
+     * Center Left(-0.3 to -0.1): Light Blue (#03A9F4)
+     * Neutral    (-0.1 to 0.1):  Theme Blue (#4A6FA5)
+     * Center Right(0.1 to 0.3):  Orange (#FF9800)
+     * Right      (0.3 to 0.6):   Dark Orange (#F57C00)
+     * Far Right  (0.6 to 1.0):   Deep Orange (#E65100)
+
+2. Categories (cat):
+   - Text values, displayed in title case
+   - Shown in gold color (rgba(192, 160, 128, 0.95))
+
+3. Topics (topic):
+   - Text values, displayed in title case
+   - Shown in theme blue color (#4A6FA5)
+
+4. API Response Format:
+   - Latest headlines endpoint returns:
+     * ID: Article identifier
+     * AIHeadline: Generated headline text
+     * Published: Timestamp (formatted as 'MMM DD, YYYY')
+     * bs_p: Bias score (-1 to 1)
+     * topic: Article topic
+     * cat: Article category
+
+5. Theme Colors:
+   - Primary Blue: #4A6FA5
+   - Gold Accent: rgba(192, 160, 128, 0.95)
+   - Text White: rgba(255, 255, 255, 0.95)
+   - Text Dim: rgba(255, 255, 255, 0.5)
+"""
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -9,6 +50,9 @@ import os
 import time
 from review_articles import evaluate_article_with_ai, display_evaluation
 from publish_utils import generate_and_encode_images, publish_article
+import logging
+import http.client as http_client
+import urllib3
 
 load_dotenv()
 API_KEY = os.environ.get("NEWSCATCHER_API_KEY")
@@ -931,17 +975,27 @@ def display_final_review():
     # Navigation controls
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Publish Article", key="final_review_publish"):
+        # Check if article has already been published
+        is_published = hasattr(st.session_state, 'publication_success') and st.session_state.publication_success
+        
+        # Create publish button with disabled state based on publication status
+        if st.button("Publish Article", 
+                    key="final_review_publish", 
+                    disabled=is_published):
             with st.spinner("Publishing article..."):
                 article_id = publish_article(
                     st.session_state.publish_data,
                     os.environ.get("PUBLISH_API_KEY")
                 )
                 if article_id:
-                    article_url = f"https://ainewsbrew.com/article/{article_id}"
+                    st.session_state.publication_success = True
+                    st.session_state.published_article_id = article_id
+                    st.session_state.published_article_url = f"https://ainewsbrew.com/article/{article_id}"
                     st.success(f"""Article published successfully! 
                         \nID: {article_id}
-                        \nView at: [{article_url}]({article_url})""")
+                        \nView at: [{st.session_state.published_article_url}]({st.session_state.published_article_url})""")
+                    st.rerun()  # Rerun to update button state
+    
     try:
         
         
@@ -1001,7 +1055,7 @@ def get_context_title():
     
     # Get time range context with bullet separator
     if 'time_range' in st.session_state:
-        time_context = f"• {st.session_state.time_range}"  # Changed to bullet point
+        time_context = f" {st.session_state.time_range}"  # Changed to bullet point
     else:
         time_context = ""
     
@@ -1093,37 +1147,109 @@ def display_publication_success(article_id, article_url):
     st.markdown('</div>', unsafe_allow_html=True)
 
 def get_bias_color(bias_value):
-    """Generate color for bias value from -1 (blue) to 1 (red)"""
+    """Generate color for bias value from -1 to 1"""
     try:
-        # Ensure bias_value is a float and clamped between -1 and 1
-        bias = float(bias_value)
+        # Handle string numeric values
+        if isinstance(bias_value, str):
+            try:
+                bias = float(bias_value)
+            except ValueError:
+                return '#4A6FA5'  # Default theme blue for non-numeric strings
+        else:
+            bias = float(bias_value)
+        
+        # Clamp value between -1 and 1
         bias = max(-1.0, min(1.0, bias))
         
-        # Define colors as RGB tuples
-        left_color = (41, 98, 255)    # Bright Blue
-        center_color = (128, 0, 128)   # Purple
-        right_color = (255, 36, 0)     # Bright Red
+        if bias < -0.6: return '#2962FF'      # Far Left
+        elif bias < -0.3: return '#2196F3'    # Left
+        elif bias < -0.1: return '#03A9F4'    # Center Left
+        elif bias <= 0.1: return '#4A6FA5'    # Neutral
+        elif bias <= 0.3: return '#FF9800'    # Center Right
+        elif bias <= 0.6: return '#F57C00'    # Right
+        else: return '#E65100'                # Far Right
+            
+    except (ValueError, TypeError):
+        return '#4A6FA5'  # Default theme blue for any errors
+
+def format_latest_headlines(headlines):
+    """Format headlines with metadata for sidebar display"""
+    st.markdown("""
+        <style>
+            .headline-item {
+                padding: 0.5rem;
+                margin-bottom: 0.5rem;
+                background: rgba(28, 28, 28, 0.95);
+                border: 1px solid rgba(74, 111, 165, 0.1);
+                border-radius: 4px;
+                transition: all 0.2s ease;
+            }
+            .headline-metadata {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                margin-bottom: 0.25rem;
+                font-size: 0.65em;
+            }
+            .headline-category {
+                color: rgba(192, 160, 128, 0.95);
+                text-transform: uppercase;
+                font-weight: 500;
+            }
+            .headline-bias {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                margin-left: auto;
+            }
+            .headline-text {
+                color: rgba(255, 255, 255, 0.95);
+                font-size: 0.8em;
+                line-height: 1.3;
+                margin-bottom: 0.25rem;
+            }
+            .headline-footer {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-size: 0.65em;
+            }
+            .headline-topic {
+                color: rgba(74, 111, 165, 0.95);
+            }
+            .headline-date {
+                color: rgba(255, 255, 255, 0.5);
+            }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    headlines_html = '<div class="headline-list">'
+    
+    for article in headlines:
+        try:
+            published_date = pd.to_datetime(article['Published']).strftime('%b %d')  # Shorter date format
+        except:
+            published_date = "Recent"
+            
+        bias = article.get('bs_p', 'Neutral')
+        bias_color = get_bias_color(bias)
+        category = article.get('cat', '').title()
+        topic = article.get('topic', '').title()
         
-        # Convert bias from -1:1 to 0:1 scale
-        normalized = (bias + 1) / 2
-        
-        if normalized <= 0.5:
-            # Blend between blue and purple
-            ratio = normalized * 2
-            r = left_color[0] + (center_color[0] - left_color[0]) * ratio
-            g = left_color[1] + (center_color[1] - left_color[1]) * ratio
-            b = left_color[2] + (center_color[2] - left_color[2]) * ratio
-        else:
-            # Blend between purple and red
-            ratio = (normalized - 0.5) * 2
-            r = center_color[0] + (right_color[0] - center_color[0]) * ratio
-            g = center_color[1] + (right_color[1] - center_color[1]) * ratio
-            b = center_color[2] + (right_color[2] - center_color[2]) * ratio
-        
-        return f"rgb({int(r)}, {int(g)}, {int(b)})"
-        
-    except Exception:
-        return "rgb(128, 128, 128)"  # Default to gray on error
+        headlines_html += f"""<div class="headline-item">
+<div class="headline-metadata">
+<span class="headline-category">{category}</span>
+<span class="headline-bias" style="background-color: {bias_color}" title="Bias: {bias}"></span>
+</div>
+<div class="headline-text">{article['AIHeadline']}</div>
+<div class="headline-footer">
+<span class="headline-topic">{topic}</span>
+<span class="headline-date">{published_date}</span>
+</div>
+</div>"""
+    
+    headlines_html += '</div>'
+    return headlines_html
 
 def create_custom_progress_bar(bias_value, i):
     """Create a custom HTML progress bar with proper color styling"""
@@ -1209,6 +1335,36 @@ def display_wizard_content():
                 display_image_step()
             else:
                 display_final_review()
+
+def fetch_latest_headlines():
+    """Fetch the latest 10 headlines from the API"""
+    try:
+        api_key = os.environ.get("PUBLISH_API_KEY")
+        http = urllib3.PoolManager()
+        
+        headers = {
+            "X-API-KEY": api_key,
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
+        
+        timestamp = int(time.time() * 1000)
+        url = f"https://fetch.ainewsbrew.com/api/index_v5.php?mode=latest&timestamp={timestamp}"
+        
+        response = http.request(
+            'GET',
+            url,
+            headers=headers
+        )
+        
+        return json.loads(response.data.decode('utf-8'))[:10] if response.status == 200 else []
+        
+    except Exception as e:
+        st.error(f"Error fetching headlines: {str(e)}")
+        return []
 
 def main():
     st.set_page_config(layout="wide", page_title="AI News Brew Research")
@@ -1449,36 +1605,81 @@ def main():
 
     # Sidebar controls
     with st.sidebar:
-        st.header("Search Controls")
-        search_type = st.radio("Search Type", ["Headlines", "Topic"])
+        st.header("Research")
         
-        # Create a form to handle the Enter key
-        with st.form(key='search_form'):
-            if search_type == "Topic":
-                topic = st.text_input("Enter Topic")
-                # Store topic in session state for title display
-                if topic:
-                    st.session_state.topic = topic
-            else:
-                # Clear topic from session state if using Headlines
-                st.session_state.topic = None
-                topic = None
-            
-            time_range = st.select_slider(
-                "Time Range",
-                options=["1h", "3h", "4h", "6h", "12h", "24h", "2d", "3d", "5d", "7d"],
-                value="24h",
-                help="Select time range from 1 hour to 7 days"
+        # Use columns for search type and time range outside the form
+        col1, col2 = st.columns([3, 2])
+        with col1:
+            search_type = st.selectbox(
+                "Type",
+                ["Headlines", "Topic"],
+                label_visibility="collapsed"
             )
-            # Store time range in session state for title display
+        with col2:
+            time_range = st.selectbox(
+                "Time",
+                ["1h", "3h", "4h", "6h", "12h", "24h", "2d", "3d", "5d", "7d"],
+                index=5,
+                label_visibility="collapsed"
+            )
             st.session_state.time_range = time_range
+        
+        # Show topic input field immediately if Topic is selected
+        topic = None
+        if search_type == "Topic":
+            # Add a key to track if Enter was pressed
+            if 'last_topic' not in st.session_state:
+                st.session_state.last_topic = ''
             
-            submit_button = st.form_submit_button("Search News")
+            topic = st.text_input(
+                "Topic",
+                placeholder="Enter topic...",
+                key="topic_input"
+            )
+            
+            # Check if Enter was pressed (topic changed)
+            if topic and topic != st.session_state.last_topic:
+                st.session_state.last_topic = topic
+                st.session_state.topic = topic
+                
+                # Trigger search automatically
+                # Clear all session state except search parameters
+                for key in list(st.session_state.keys()):
+                    if key not in ['topic', 'time_range', 'last_topic']:
+                        del st.session_state[key]
+                
+                # Fetch news data
+                with st.spinner("Fetching news..."):
+                    news_data = get_news_data("Topic", query=topic, when=time_range)
+                    
+                    if news_data and 'clusters' in news_data:
+                        st.session_state.news_data = news_data
+                        st.session_state.is_loading_clusters = True
+                        st.session_state.clusters = []
+                        st.rerun()
+                    else:
+                        st.error("No news data found")
+                        st.session_state.clusters = []
+                        st.session_state.is_loading_clusters = False
+                        if 'news_data' in st.session_state:
+                            del st.session_state.news_data
+                
+                st.rerun()
+        else:
+            st.session_state.topic = None
+        
+        # Wrap just the search button in a form for manual triggering
+        with st.form(key='search_form', clear_on_submit=False):
+            submit_button = st.form_submit_button(
+                "Search",
+                use_container_width=True,
+                disabled=(search_type == "Topic" and not topic)
+            )
             
             if submit_button:
                 # Clear all session state except search parameters
                 for key in list(st.session_state.keys()):
-                    if key not in ['topic', 'time_range']:
+                    if key not in ['topic', 'time_range', 'last_topic']:
                         del st.session_state[key]
                 
                 # Fetch news data based on search type
@@ -1502,6 +1703,84 @@ def main():
                             del st.session_state.news_data
                 
                 st.rerun()
+
+        # Add Latest Headlines section after the search form
+        st.markdown("""
+            <style>
+                .latest-headlines {
+                    margin-top: 0em;
+                    padding: 0.0rem 0;
+                }
+                .latest-headlines h4 {
+                    color: var(--text-color);
+                    margin-bottom: 0.0rem;
+                }
+                .headline-list {
+                    list-style-type: none;
+                    padding-left: 0;
+                }
+                .headline-item {
+                    padding: 0.0rem;
+                    margin-bottom: 0.5rem;
+                    background: rgba(28, 28, 28, 0.95);
+                    border: 1px solid rgba(74, 111, 165, 0.1);
+                    border-radius: 4px;
+                    transition: all 0.2s ease;
+                }
+                .headline-item:hover {
+                    background: rgba(28, 28, 28, 1);
+                    border-color: rgba(74, 111, 165, 0.2);
+                    transform: translateY(-1px);
+                }
+                .headline-metadata {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.2rem;
+                    margin-bottom: 0.25rem;
+                    font-size: 0.65em;
+                }
+                .headline-category {
+                    color: rgba(192, 160, 128, 0.95);
+                    text-transform: uppercase;
+                    font-weight: 500;
+                }
+                .headline-bias {
+                    width: 8px;
+                    height: 8px;
+                    border-radius: 50%;
+                    margin-left: auto;
+                }
+                .headline-text {
+                    color: rgba(255, 255, 255, 0.95);
+                    font-size: 0.8em;
+                    line-height: 1.3;
+                    margin-bottom: 0.25rem;
+                }
+                .headline-footer {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    font-size: 0.65em;
+                }
+                .headline-topic {
+                    color: rgba(74, 111, 165, 0.95);
+                }
+                .headline-date {
+                    color: rgba(255, 255, 255, 0.5);
+                }
+            </style>
+            <div class="latest-headlines">
+                <h4>Latest Headlines</h4>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Fetch and display latest headlines
+        headlines = fetch_latest_headlines()
+        if headlines:
+            headlines_html = format_latest_headlines(headlines)
+            st.markdown(headlines_html, unsafe_allow_html=True)
+        else:
+            st.caption("No recent headlines available")
 
     # Main content area with adjusted ratio
     col1, col2 = st.columns([0.8, 3])  # Reduced ratio for cluster listings
