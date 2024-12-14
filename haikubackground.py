@@ -153,7 +153,7 @@ def add_text_to_image(image_path, haiku, ai_headline, article_date, font_path, i
 
 def generate_haiku_background(haiku, ai_headline, article_date):
     # print(f"Received haiku:\n{haiku}\n")
-    # print("Generating image prompt based on the haiku...")
+    print("Generating image prompt based on the haiku...")
     image_prompt = generate_image_prompt(haiku)
     # print(f"\nGenerated image prompt:\n{image_prompt}\n")
     result = generate_image(image_prompt)

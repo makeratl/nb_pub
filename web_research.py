@@ -51,6 +51,10 @@ def reset_article_state():
     for key in list(st.session_state.keys()):
         if key.startswith('cluster_') and key != 'clusters':
             del st.session_state[key]
+    
+    # Add this line to clear the article rejection state
+    if hasattr(st.session_state, 'article_rejected'):
+        del st.session_state.article_rejected
 
 def get_news_data(search_type, query="", when="24h"):
     """Fetch news data from NewsCatcher API"""
@@ -212,7 +216,7 @@ def display_evaluation_results():
         return
     
     try:
-        # Add CSS for centered metrics
+        # Add CSS for centered metrics and layout
         st.markdown("""
             <style>
                 div[data-testid="metric-container"] {
@@ -220,6 +224,7 @@ def display_evaluation_results():
                     border-radius: 8px;
                     padding: 1rem;
                     text-align: center !important;
+                    margin-bottom: 0.5rem;
                 }
                 
                 div[data-testid="metric-container"] > div {
@@ -237,34 +242,129 @@ def display_evaluation_results():
                     text-align: center;
                     font-size: 1.2rem !important;
                 }
+                
+                .metrics-stack {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.5rem;
+                }
+
+                /* Custom tab styling */
+                .stTabs [data-baseweb="tab-list"] {
+                    gap: 8px;
+                    margin-bottom: 0.5rem;
+                }
+
+                .stTabs [data-baseweb="tab"] {
+                    padding: 0.5rem 1rem;
+                    background-color: #f8f9fa;
+                    border-radius: 4px;
+                }
+
+                .stTabs [data-baseweb="tab-highlight"] {
+                    background-color: var(--primary-color);
+                }
             </style>
         """, unsafe_allow_html=True)
         
-        # Center the metrics container
-        st.markdown('<div style="max-width: 800px; margin: 0 auto;">', unsafe_allow_html=True)
+        # Category row
+        category = eval_data.get('cat', 'Unknown')
+        st.metric("Category", category)
         
-        # First row - Category and Quality
-        col1, col2 = st.columns(2)
+        # Create two columns for Analysis and Metrics
+        col1, col2 = st.columns([2, 1])
         
         with col1:
-            category = eval_data.get('cat', 'Unknown')
-            st.metric("Category", category)
+            # AI Analysis expander (expanded by default)
+            st.markdown("""
+                <style>
+                    /* Hide the collapse arrow for this specific expander */
+                    [data-testid="stExpander"] div[role="button"] svg {
+                        display: none;
+                    }
+                    /* Remove hover effect and cursor pointer */
+                    [data-testid="stExpander"] div[role="button"] {
+                        pointer-events: none;
+                    }
+                    /* Maintain consistent background */
+                    [data-testid="stExpander"] div[role="button"]:hover {
+                        background-color: transparent;
+                    }
+                </style>
+            """, unsafe_allow_html=True)
+            
+            # Create tabs for different analysis aspects
+            quality_tab, bias_tab, prop_tab = st.tabs([
+                 "Quality", "Bias", "Propagation"
+            ])
+            
+            with quality_tab:
+                quality_score = eval_data.get('quality_score', 0)
+                try:
+                    quality_score = float(quality_score)
+                except (ValueError, TypeError):
+                    quality_score = 0.0
+                
+                st.markdown(f"""
+                    ### Quality Assessment Score: {quality_score:.1f}/10
+                    
+                    The quality score evaluates the article based on:
+                    - Writing clarity and coherence
+                    - Source diversity and reliability
+                    - Factual accuracy and completeness
+                    - Balanced presentation
+                """)
+            
+            with bias_tab:
+                bias_score = eval_data.get('bs_p', 'Neutral')
+                bias_mapping = {
+                    'Far Left': -1.0,
+                    'Left': -0.6,
+                    'Center Left': -0.3,
+                    'Neutral': 0.0,
+                    'Center Right': 0.3,
+                    'Right': 0.6,
+                    'Far Right': 1.0
+                }
+                numeric_bias = bias_mapping.get(bias_score, 0.0)
+                bias_color = get_bias_color(numeric_bias)
+                
+                st.markdown(f"""
+                    ### Bias Assessment: {bias_score}
+                    
+                    The bias score indicates the article's political leaning:
+                    - Far Left (-1.0) to Far Right (1.0)
+                    - Current score indicates {bias_score} bias
+                    - Based on source analysis and content evaluation
+                """)
+            
+            with prop_tab:
+                trend_score = eval_data.get('trend', 0.0)
+                if isinstance(trend_score, str):
+                    try:
+                        trend_score = float(trend_score)
+                    except (ValueError, TypeError):
+                        trend_score = 0.0
+                
+                st.markdown(f"""
+                    ### Propagation Index: {trend_score:.1f}/10
+                    
+                    The propagation index measures:
+                    - Topic relevance and timeliness
+                    - Public interest potential
+                    - Information spread patterns
+                    - Content accessibility
+                """)
         
         with col2:
+            # Metrics stack
             quality_score = eval_data.get('quality_score', 0)
             try:
                 quality_score = float(quality_score)
             except (ValueError, TypeError):
                 quality_score = 0.0
             st.metric("Quality Score", f"{quality_score:.1f}/10")
-        
-        # Add some spacing
-        st.markdown("<div style='margin-top: 1em;'></div>", unsafe_allow_html=True)
-        
-        # Second row - Bias and Viral
-        col1, col2 = st.columns(2)
-        
-        with col1:
+            
             bias_score = eval_data.get('bs_p', 'Neutral')
             try:
                 # Convert text bias to numeric value
@@ -278,11 +378,9 @@ def display_evaluation_results():
                     'Far Right': 1.0
                 }
                 numeric_bias = bias_mapping.get(bias_score, 0.0)
-                
-                # Get color for bias value
                 bias_color = get_bias_color(numeric_bias)
                 
-                # Add custom styling for this metric
+                # Add custom styling for bias metric
                 st.markdown(f"""
                     <style>
                         [data-testid="metric-container"]:nth-of-type(3) {{
@@ -299,20 +397,12 @@ def display_evaluation_results():
             except Exception as e:
                 st.metric("Bias Score", bias_score)
             
-        with col2:
             trend_score = eval_data.get('trend')
             try:
                 trend_score = float(trend_score)
             except (ValueError, TypeError):
                 trend_score = 0.0
-            st.metric("Viral Potential", f"{trend_score:.1f}/10")
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Display reasoning in an expander (closed by default)
-        with st.expander("AI Analysis", expanded=False):
-            reasoning = eval_data.get('reasoning', 'No analysis provided')
-            st.markdown(reasoning)
+            st.metric("Propagation Index", f"{trend_score:.1f}/10")
     
     except Exception as e:
         st.error(f"Error displaying evaluation results: {str(e)}")
@@ -347,40 +437,8 @@ def display_article_step():
     # Sort sources by frequency
     sorted_sources = sorted(source_groups.items(), key=lambda x: x[1], reverse=True)
     
-    # Display source tags with custom styling
-    st.markdown("""
-    <style>
-        .source-tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 1rem;
-        }
-        .source-tag {
-            background-color: rgba(74, 111, 165, 0.1);
-            border: 1px solid rgba(74, 111, 165, 0.3);
-            border-radius: 16px;
-            padding: 4px 12px;
-            font-size: 0.9em;
-            color: #4a6fa5;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .source-count {
-            background-color: rgba(74, 111, 165, 0.2);
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.8em;
-            font-weight: 500;
-        }
-    </style>
-    <div class="source-tags">
-    """, unsafe_allow_html=True)
+    # Display source tags without redefining styles
+    st.markdown('<div class="source-tags">', unsafe_allow_html=True)
     
     # Generate tag HTML
     tags_html = ""
@@ -393,47 +451,99 @@ def display_article_step():
         """
     st.markdown(tags_html + "</div>", unsafe_allow_html=True)
     
-    # Main content - swapped columns
-    col1, col2 = st.columns([1, 2.8])  # Adjusted column ratio to give haiku more width
+    # Main content - swapped columns with adjusted ratio and styling
+    col1, col2 = st.columns([1.2, 2.6])  # Adjusted ratio to give haiku more width
     
     with col1:
         haiku_lines = st.session_state.article_data['haiku'].split('\n')
-        st.markdown(f"""
+        st.markdown("""
             <style>
-                .haiku-container {{
+                .haiku-container {
                     background-color: #f8f9fa;
                     border: 1px solid rgba(74, 111, 165, 0.1);
                     border-radius: 8px;
                     padding: 1rem;
                     margin-top: 0.5rem;
-                    display: inline-block;
-                    width: auto;
-                }}
-                .haiku-title {{
+                    width: 100%;
+                    box-sizing: border-box;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                }
+                .haiku-title {
                     font-size: 1rem;
                     color: #4a6fa5;
                     margin-bottom: 0.75rem;
                     font-weight: 500;
-                }}
-                .haiku-text {{
-                    font-size: 0.9rem;
+                }
+                .haiku-text {
+                    font-size: 0.95rem;
                     font-style: italic;
                     color: #2c3e50;
                     line-height: 1.5;
+                    text-align: center;
                     white-space: nowrap;
-                }}
+                    overflow-x: auto;
+                    max-width: 100%;
+                    scrollbar-width: none;
+                    -ms-overflow-style: none;
+                }
+                .haiku-text::-webkit-scrollbar {
+                    display: none;
+                }
+                .haiku-line {
+                    white-space: nowrap;
+                    margin: 0.2rem 0;
+                }
+                /* Responsive font sizing with more breakpoints */
+                @media (max-width: 1400px) {
+                    .haiku-text {
+                        font-size: 0.9rem;
+                    }
+                }
+                @media (max-width: 1200px) {
+                    .haiku-text {
+                        font-size: 0.85rem;
+                    }
+                }
+                @media (max-width: 992px) {
+                    .haiku-text {
+                        font-size: 0.8rem;
+                    }
+                }
+                @media (max-width: 768px) {
+                    .haiku-text {
+                        font-size: 0.75rem;
+                    }
+                }
             </style>
+        """, unsafe_allow_html=True)
+        
+        # Then add the content with the haiku
+        st.markdown(f"""
             <div class="haiku-container">
                 <div class="haiku-title">Haiku</div>
                 <div class="haiku-text">
-                    {haiku_lines[0].strip()}<br>
-                    {haiku_lines[1].strip()}<br>
-                    {haiku_lines[2].strip()}
+                    <div class="haiku-line">{haiku_lines[0].strip()}</div>
+                    <div class="haiku-line">{haiku_lines[1].strip()}</div>
+                    <div class="haiku-line">{haiku_lines[2].strip()}</div>
                 </div>
             </div>
         """, unsafe_allow_html=True)
     
     with col2:
+        # Add container styling to ensure proper spacing
+        st.markdown("""
+            <style>
+                .summary-container {
+                    margin-left: 1rem;
+                    padding-left: 1rem;
+                    border-left: 1px solid rgba(74, 111, 165, 0.1);
+                }
+            </style>
+        """, unsafe_allow_html=True)
+        
+        st.markdown('<div class="summary-container">', unsafe_allow_html=True)
         st.markdown("#### Summary")
         st.markdown(st.session_state.article_data['summary'])
         
@@ -443,6 +553,7 @@ def display_article_step():
         with st.expander("Source Articles", expanded=False):
             for article in st.session_state.selected_cluster['articles']:
                 st.markdown(f"- [{article['title']}]({article['link']}) - {article['name_source']}")
+        st.markdown('</div>', unsafe_allow_html=True)
 
 def display_review_step():
     """Display the AI review results and article content"""
@@ -458,84 +569,283 @@ def display_review_step():
             for i, article in enumerate(st.session_state.selected_cluster['articles'][:8], 1):
                 sources.append([i, article['link']])
             
-            # Start haiku image generation before moving to next step
-            with st.spinner("Preparing article and generating haiku image..."):
-                # Generate haiku image
-                image_data, image_haiku = generate_haiku_images(
-                    st.session_state.article_data['haiku'],
-                    st.session_state.article_data['headline']
-                )
-                
-                st.session_state.publish_data = {
-                    "AIHeadline": st.session_state.article_data['headline'],
-                    "AIHaiku": st.session_state.article_data['haiku'],
-                    "AIStory": st.session_state.article_data['story'],
-                    "AISummary": st.session_state.article_data['summary'],
-                    "bs": f"{st.session_state.selected_cluster['category']} | High Confidence | {st.session_state.selected_cluster['subject']}",
-                    "topic": st.session_state.evaluation.get('topic', st.session_state.selected_cluster['category']),
-                    "cat": st.session_state.evaluation.get('cat', st.session_state.selected_cluster['subject']),
-                    "bs_p": st.session_state.evaluation.get('bs_p', ''),
-                    "qas": st.session_state.evaluation.get('quality_score', ''),
-                    "Cited": json.dumps(sources)  # Add citations
-                }
-                
-                # Add image data if generation was successful
-                if image_data and image_haiku:
+            # Create publish data first
+            st.session_state.publish_data = {
+                "AIHeadline": st.session_state.article_data['headline'],
+                "AIHaiku": st.session_state.article_data['haiku'],
+                "AIStory": st.session_state.article_data['story'],
+                "AISummary": st.session_state.article_data['summary'],
+                "bs": f"{st.session_state.selected_cluster['category']} | High Confidence | {st.session_state.selected_cluster['subject']}",
+                "topic": st.session_state.evaluation.get('topic', st.session_state.selected_cluster['category']),
+                "cat": st.session_state.evaluation.get('cat', st.session_state.selected_cluster['subject']),
+                "bs_p": st.session_state.evaluation.get('bs_p', ''),
+                "qas": st.session_state.evaluation.get('quality_score', ''),
+                "Cited": json.dumps(sources)
+            }
+            
+            # Separate spinner just for image generation
+            with st.spinner("Generating haiku image..."):
+                try:
+                    # Generate haiku image with explicit timeout
+                    image_data, image_haiku = generate_haiku_images(
+                        st.session_state.article_data['haiku'],
+                        st.session_state.article_data['headline']
+                    )
+                    
+                    if not image_data or not image_haiku:
+                        st.error("Failed to generate image - please try again")
+                        return
+                    
+                    # Store image data in session state
                     st.session_state.haiku_image = image_haiku
                     st.session_state.publish_data.update({
                         'image_data': image_data,
                         'image_haiku': image_haiku
                     })
-                
-                with open('publish.json', 'w') as f:
-                    json.dump(st.session_state.publish_data, f, indent=2)
-                
-                st.session_state.current_step = 3
-                st.rerun()
+                    
+                    # Save to file
+                    with open('publish.json', 'w') as f:
+                        json.dump(st.session_state.publish_data, f, indent=2)
+                    
+                    # Only proceed if image generation was successful
+                    st.session_state.current_step = 3
+                    st.rerun()
+                    
+                except Exception as e:
+                    st.error(f"Error generating image: {str(e)}")
+                    return
     with col2:
         if st.button("Reject Article", key="review_reject_step"):
+            st.session_state.article_rejected = True
             reset_article_state()
             st.rerun()
     
-    st.markdown("---")  # Divider
-    
-    # Main content
-    review_tab, article_tab = st.tabs(["AI Review", "Article Content"])
-    
-    with review_tab:
-        #st.subheader("AI Review Results")
-        display_evaluation_results()
-    
-    with article_tab:
-        st.subheader(st.session_state.article_data['headline'])
+    # Create tabs for different analysis aspects
+    quality_score = st.session_state.evaluation.get('quality_score', 0)
+    try:
+        quality_score = float(quality_score)
+    except (ValueError, TypeError):
+        quality_score = 0.0
         
+    bias_score = st.session_state.evaluation.get('bs_p', 'Neutral')
+    
+    trend_score = st.session_state.evaluation.get('trend', 0.0)
+    if isinstance(trend_score, str):
+        try:
+            trend_score = float(trend_score)
+        except (ValueError, TypeError):
+            trend_score = 0.0
+    
+    quality_tab, bias_tab, prop_tab, content_tab = st.tabs([
+        f"Quality ({quality_score:.1f})",
+        f"Bias ({bias_score})",
+        f"Propagation ({trend_score:.1f})",
+        "Article Content"
+    ])
+    
+    with quality_tab:
+        quality_score = st.session_state.evaluation.get('quality_score', 0)
+        try:
+            quality_score = float(quality_score)
+        except (ValueError, TypeError):
+            quality_score = 0.0
+        
+        # Parse quality-related content from reasoning
+        reasoning = st.session_state.evaluation.get('reasoning', '')
+        quality_analysis = ""
+        
+        # Look for the Quality Analysis section
+        if "Quality Analysis:" in reasoning:
+            sections = reasoning.split("Quality Analysis:")
+            if len(sections) > 1:
+                quality_section = sections[1].split("Bias Analysis:")[0].strip()
+                quality_analysis = quality_section
+        
+        if not quality_analysis:
+            quality_analysis = """
+                The quality score evaluates the article based on:
+                - Writing clarity and coherence
+                - Source diversity and reliability
+                - Factual accuracy and completeness
+                - Balanced presentation
+            """
+        
+        st.markdown(f"""
+            ### Quality Assessment Score: {quality_score:.1f}/10
+            
+            {quality_analysis}
+        """)
+    
+    with bias_tab:
+        bias_score = st.session_state.evaluation.get('bs_p', 'Neutral')
+        
+        # Parse bias-related content from reasoning
+        bias_analysis = ""
+        
+        # Look for the Bias Analysis section
+        if "Bias Analysis:" in reasoning:
+            sections = reasoning.split("Bias Analysis:")
+            if len(sections) > 1:
+                bias_section = sections[1].split("Viral Potential:")[0].strip()
+                bias_analysis = bias_section
+        
+        if not bias_analysis:
+            bias_analysis = f"""
+                The bias score indicates {bias_score} political leaning:
+                - Based on source analysis and content evaluation
+                - Considers perspective balance
+                - Evaluates partisan language
+            """
+        
+        st.markdown(f"""
+            ### Bias Assessment: {bias_score}
+            
+            {bias_analysis}
+        """)
+    
+    with prop_tab:
+        trend_score = st.session_state.evaluation.get('trend', 0.0)
+        if isinstance(trend_score, str):
+            try:
+                trend_score = float(trend_score)
+            except (ValueError, TypeError):
+                trend_score = 0.0
+        
+        # Parse propagation-related content from reasoning
+        prop_analysis = ""
+        
+        # Look for the Viral Potential section
+        if "Viral Potential:" in reasoning:
+            sections = reasoning.split("Viral Potential:")
+            if len(sections) > 1:
+                prop_section = sections[1].strip()
+                prop_analysis = prop_section
+        
+        if not prop_analysis:
+            prop_analysis = f"""
+                The propagation index measures:
+                - Topic relevance and timeliness
+                - Public interest potential
+                - Information spread patterns
+                - Content accessibility
+            """
+        
+        st.markdown(f"""
+            ### Propagation Index: {trend_score:.1f}/10
+            
+            {prop_analysis}
+        """)
+    
+    with content_tab:
         col1, col2 = st.columns([2, 1])
         with col1:
             st.markdown("### Summary")
             st.markdown(st.session_state.article_data['summary'])
             
-            with st.expander("Full Story", expanded=True):
+            with st.expander("Full Story", expanded=False):
                 st.markdown(st.session_state.article_data['story'], unsafe_allow_html=True)
         
         with col2:
-            st.markdown("### Haiku")
-            # Add style for paragraph margins and display haiku
+            # Haiku style
             st.markdown("""
                 <style>
-                    .element-container div.stMarkdown p {
-                        margin: 0.5em 0;
+                    .haiku-container {
+                        background-color: #f8f9fa;
+                        border: 1px solid rgba(74, 111, 165, 0.1);
+                        border-radius: 8px;
+                        padding: 1rem;
+                        margin-top: 0.5rem;
+                        display: inline-block;
+                        width: auto;
+                    }
+                    .haiku-title {
+                        font-size: 1rem;
+                        color: #4a6fa5;
+                        margin-bottom: 0.75rem;
+                        font-weight: 500;
+                    }
+                    .haiku-text {
+                        font-size: 0.9rem;
+                        font-style: italic;
+                        color: #2c3e50;
+                        line-height: 1.5;
+                        white-space: nowrap;
+                    }
+                    
+                    /* Source tags styling */
+                    .source-tags {
+                        display: flex;
+                        flex-wrap: wrap;
+                        gap: 8px;
+                        margin: 1rem 0;
+                    }
+                    .source-tag {
+                        background-color: rgba(74, 111, 165, 0.1);
+                        border: 1px solid rgba(74, 111, 165, 0.3);
+                        border-radius: 16px;
+                        padding: 4px 12px;
+                        font-size: 0.9em;
+                        color: #4a6fa5;
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 6px;
+                    }
+                    .source-count {
+                        background-color: rgba(74, 111, 165, 0.2);
+                        border-radius: 50%;
+                        width: 20px;
+                        height: 20px;
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 0.8em;
+                        font-weight: 500;
                     }
                 </style>
             """, unsafe_allow_html=True)
-            haiku_lines = st.session_state.article_data['haiku'].split('\n')
-            for i, line in enumerate(haiku_lines):
-                st.markdown(line.strip(), unsafe_allow_html=True)
-                if i < len(haiku_lines) - 1:
-                    st.markdown("<br>", unsafe_allow_html=True)
             
-            with st.expander("Source Articles", expanded=False):
+            # Haiku content
+            haiku_lines = st.session_state.article_data['haiku'].split('\n')
+            st.markdown(f"""
+                <div class="haiku-container">
+                    <div class="haiku-title">Haiku</div>
+                    <div class="haiku-text">
+                        {haiku_lines[0].strip()}<br>
+                        {haiku_lines[1].strip()}<br>
+                        {haiku_lines[2].strip()}
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            # Group sources by domain/publisher
+            source_groups = {}
+            for article in st.session_state.selected_cluster['articles']:
+                source = article['name_source']
+                if source in source_groups:
+                    source_groups[source] += 1
+                else:
+                    source_groups[source] = 1
+            
+            # Sort sources by frequency
+            sorted_sources = sorted(source_groups.items(), key=lambda x: x[1], reverse=True)
+            
+            # Generate source tags HTML
+            tags_html = '<div class="source-tags">'
+            for source, count in sorted_sources:
+                tags_html += f"""
+<div class="source-tag">
+    {source}
+    <span class="source-count">{count}</span>
+</div>
+                """
+            tags_html += "</div>"
+            
+            st.markdown(tags_html, unsafe_allow_html=True)
+            
+            # Source links in expander
+            with st.expander("Source Links", expanded=False):
                 for article in st.session_state.selected_cluster['articles']:
-                    st.markdown(f"- [{article['title']}]({article['link']}) - {article['name_source']}")
+                    st.markdown(f"- [{article['title']}]({article['link']})")
 
 def display_image_step():
     """Display the haiku image generation step"""
@@ -557,12 +867,18 @@ def display_image_step():
                     st.session_state.publish_data.get('AIHeadline', '')
                 )
                 if image_data and image_haiku:
+                    # Update both session state and publish data
                     st.session_state.haiku_image = image_haiku
                     st.session_state.publish_data.update({
                         'image_data': image_data,
                         'image_haiku': image_haiku
                     })
+                    # Save updated publish data to file
+                    with open('publish.json', 'w') as f:
+                        json.dump(st.session_state.publish_data, f, indent=2)
                     st.rerun()
+                else:
+                    st.error("Failed to generate new image")
     with col2:
         if st.button("Continue to Final Review", key="image_continue_review"):
             st.session_state.current_step = 4
@@ -590,7 +906,7 @@ def display_image_step():
         container_style = """
             <style>
                 [data-testid="stImage"] {
-                    width: 80%;
+                    width: 70%;
                     margin: 0 auto;
                     display: block;
                 }
@@ -627,7 +943,7 @@ def display_final_review():
                         \nID: {article_id}
                         \nView at: [{article_url}]({article_url})""")
     try:
-        st.subheader("Final Review")
+        
         
         col1, col2 = st.columns([3, 2])
         
@@ -636,8 +952,26 @@ def display_final_review():
             st.markdown(f"**Headline:** {st.session_state.publish_data.get('AIHeadline', 'No headline')}")
             st.markdown(f"**Category:** {st.session_state.publish_data.get('cat', 'No category')}")
             st.markdown(f"**Topic:** {st.session_state.publish_data.get('topic', 'No topic')}")
-            st.markdown("**Haiku:**")
-            st.markdown(st.session_state.publish_data.get('AIHaiku', 'No haiku'))
+            
+            # Display haiku image with styling
+            if st.session_state.haiku_image is not None:
+                st.markdown("""
+                    <style>
+                        [data-testid="stImage"] {
+                            width: 100%;
+                            margin: 1rem auto;
+                            display: block;
+                        }
+                        [data-testid="stImage"] img {
+                            border-radius: 8px;
+                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                        }
+                    </style>
+                """, unsafe_allow_html=True)
+                st.image(st.session_state.haiku_image, caption="Haiku Visualization")
+            else:
+                st.warning("No haiku image available")
+            
             st.markdown("**Summary:**")
             st.markdown(st.session_state.publish_data.get('AISummary', 'No summary'))
         
@@ -650,11 +984,6 @@ def display_final_review():
                 st.metric("Quality Score", "N/A")
             
             st.metric("Bias Score", st.session_state.publish_data.get('bs_p', 'N/A'))
-            
-            if st.session_state.haiku_image is not None:
-                st.image(st.session_state.haiku_image, caption="Final Haiku Image")
-            else:
-                st.warning("No haiku image available")
     
     except Exception as e:
         st.error(f"Error displaying final review: {str(e)}")
@@ -899,41 +1228,37 @@ def main():
                 --metric-bg: #ffffff;
             }
             
-            /* Progress bar base styles */
-            div[data-testid="stProgress"] > div > div {
-                background-color: var(--accent-blue);
+            /* Source tags styling - moved to global scope */
+            .source-tags {
+                display: flex !important;
+                flex-wrap: wrap !important;
+                gap: 8px !important;
+                margin-bottom: 1rem !important;
+            }
+            .source-tag {
+                background-color: rgba(74, 111, 165, 0.1) !important;
+                border: 1px solid rgba(74, 111, 165, 0.3) !important;
+                border-radius: 16px !important;
+                padding: 4px 12px !important;
+                font-size: 0.9em !important;
+                color: #4a6fa5 !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                gap: 6px !important;
+            }
+            .source-count {
+                background-color: rgba(74, 111, 165, 0.2) !important;
+                border-radius: 50% !important;
+                width: 20px !important;
+                height: 20px !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                font-size: 0.8em !important;
+                font-weight: 500 !important;
             }
             
-            /* Progress bar container styles */
-            .bias-progress-container {
-                background: white;
-                padding: 0.5rem;
-                border-radius: 4px;
-                margin: 0.5rem 0;
-            }
-            
-            /* Custom progress bar colors - with higher specificity */
-            .bias-left div[data-testid="stProgress"] > div > div:first-child {
-                background: rgb(41, 98, 255) !important;
-            }
-            
-            .bias-center div[data-testid="stProgress"] > div > div:first-child {
-                background: rgb(128, 0, 128) !important;
-            }
-            
-            .bias-right div[data-testid="stProgress"] > div > div:first-child {
-                background: rgb(255, 36, 0) !important;
-            }
-            
-            /* Override any Streamlit defaults */
-            .stProgress > div > div {
-                background-color: inherit !important;
-            }
-            
-            /* Debug outline */
-            .bias-progress-container {
-                outline: 1px solid rgba(0,0,0,0.1);
-            }
+            /* Rest of your existing global styles... */
         </style>
     """, unsafe_allow_html=True)
     
@@ -958,7 +1283,7 @@ def main():
             
             /* Main container and general styling */
             .main .block-container {
-                padding-top: 0.5rem !important;
+                padding-top: 0.0rem !important;
                 padding-bottom: 2rem;
                 background-color: var(--primary-bg);
             }
@@ -1137,6 +1462,7 @@ def main():
             else:
                 # Clear topic from session state if using Headlines
                 st.session_state.topic = None
+                topic = None
             
             time_range = st.select_slider(
                 "Time Range",
@@ -1152,161 +1478,144 @@ def main():
             if submit_button:
                 # Clear all session state except search parameters
                 for key in list(st.session_state.keys()):
-                    if key != 'topic' and key != 'time_range':
+                    if key not in ['topic', 'time_range']:
                         del st.session_state[key]
                 
-                # Clear both columns by forcing a rerun before loading state
-                col1, col2 = st.columns([2, 3])
-                with col1:
-                    st.empty()
-                with col2:
-                    st.empty()
+                # Fetch news data based on search type
+                with st.spinner("Fetching news..."):
+                    if search_type == "Headlines":
+                        news_data = get_news_data("Headlines", when=time_range)
+                    else:
+                        news_data = get_news_data("Topic", query=topic, when=time_range)
+                    
+                    if news_data and 'clusters' in news_data:
+                        # Store news data and set loading state
+                        st.session_state.news_data = news_data
+                        st.session_state.is_loading_clusters = True
+                        st.session_state.clusters = []  # Clear existing clusters
+                        st.rerun()  # Trigger rerun to show loading state
+                    else:
+                        st.error("No news data found")
+                        st.session_state.clusters = []
+                        st.session_state.is_loading_clusters = False
+                        if 'news_data' in st.session_state:
+                            del st.session_state.news_data
                 
-                # Now set loading state and trigger another rerun
-                st.session_state.is_loading_clusters = True
                 st.rerun()
 
-    # Main content area styling
-    st.markdown("""
-        <style>
-            /* Remove default padding from columns */
-            [data-testid="column"] {
-                padding: 0 !important;
-            }
-            
-            /* Add right padding to first column for spacing */
-            [data-testid="column"]:first-child {
-                padding-right: 1rem !important;
-            }
-            
-            /* Style second column with dark background */
-            [data-testid="column"]:nth-child(2) {
-                background-color: #1E1E1E !important;
-                border-radius: 8px !important;
-                padding: 1rem !important;
-                border: 1px solid rgba(255,255,255,0.1) !important;
-            }
-            
-            /* Remove top margin from the first element in the wizard */
-            .stExpander {
-                margin-top: 0 !important;
-            }
-            
-            /* Adjust container within dark background */
-            [data-testid="column"]:nth-child(2) [data-testid="stVerticalBlock"] > [data-testid="stVerticalBlock"] {
-                background-color: #2E2E2E !important;
-                margin: 0 !important;
-            }
-        </style>
-    """, unsafe_allow_html=True)
-
-    # Create columns with custom spacing
-    col1, col2 = st.columns([2, 3])
-    
-    # Clear columns if we're starting a new search
-    if hasattr(st.session_state, 'is_loading_clusters') and st.session_state.is_loading_clusters:
-        with col1:
-            st.empty()
-        with col2:
-            st.empty()
-            
-        query = st.session_state.topic if search_type == "Topic" else ""
-        news_data = get_news_data(search_type, query, time_range)
-        
-        if news_data:
-            # Calculate total clusters before displaying
-            total_clusters = len([c for c in news_data.get('clusters', []) if c.get('cluster_size', 0) >= 3])
-            clusters = []
-            processed_clusters = 0
-            
-            with col1:
-                st.markdown(f"""
-                    <div style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 2rem; text-align: center;">
-                        <div class="loading-spinner" style="margin: 0 auto;">
-                            <style>
-                                .loading-spinner {{
-                                    width: 50px;
-                                    height: 50px;
-                                    border: 5px solid #f3f3f3;
-                                    border-top: 5px solid var(--accent-blue);
-                                    border-radius: 50%;
-                                    animation: spin 1s linear infinite;
-                                }}
-                                @keyframes spin {{
-                                    0% {{ transform: rotate(0deg); }}
-                                    100% {{ transform: rotate(360deg); }}
-                                }}
-                            </style>
-                        </div>
-                        <div style="margin-top: 1.5rem; color: var(--text-secondary);">
-                            <div style="color: var(--accent-blue); font-weight: 500; margin-bottom: 0.5rem;">
-                                Processing News Data
-                            </div>
-                            <div style="font-size: 0.9em; margin: 0.3rem 0;">Found {total_clusters} news clusters to analyze</div>
-                            <div style="width: 100%; background: rgba(255,255,255,0.2); border-radius: 4px; margin: 1rem 0; height: 8px; overflow: hidden;">
-                                <div id="progress-bar" style="width: 0%; height: 100%; background: var(--accent-blue); transition: width 0.3s ease;"></div>
-                            </div>
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
-            
-            for i, cluster in enumerate(news_data.get('clusters', [])):
-                if cluster.get('cluster_size', 0) >= 3:
-                    processed_clusters += 1
-                    progress = (processed_clusters / total_clusters) * 100
-                    
-                    # Update progress bar
-                    with col1:
-                        st.markdown(f"""
-                            <style>
-                                #progress-bar {{
-                                    width: {progress}% !important;
-                                }}
-                            </style>
-                            <div style="text-align: center; color: var(--text-secondary); font-size: 0.9em; margin-top: 10px;">
-                                Processing cluster {processed_clusters} of {total_clusters}
-                            </div>
-                        """, unsafe_allow_html=True)
-                    
-                    analysis = analyze_cluster(cluster)
-                    clusters.append({
-                        **cluster,
-                        **analysis
-                    })
-            
-            st.session_state.clusters = clusters
-            st.session_state.is_loading_clusters = False
-            st.rerun()
+    # Main content area with adjusted ratio
+    col1, col2 = st.columns([0.8, 3])  # Reduced ratio for cluster listings
     
     with col1:
         if 'is_loading_clusters' not in st.session_state:
             st.session_state.is_loading_clusters = False
             
         if st.session_state.is_loading_clusters:
-            # Loading spinner is now handled above
-            pass
+            # Show loading indicator while processing clusters
+            with st.spinner("Processing news clusters..."):
+                if 'news_data' in st.session_state:
+                    # Process clusters
+                    clusters = []
+                    valid_clusters = [c for c in st.session_state.news_data.get('clusters', []) 
+                                    if len(c.get('articles', [])) >= 3]
+                    total_clusters = len(valid_clusters)
+                    
+                    if total_clusters > 0:
+                        st.write(f"Found {total_clusters} clusters to analyze")
+                        progress_bar = st.progress(0)
+                        
+                        for idx, cluster in enumerate(valid_clusters):
+                            # Update progress bar
+                            progress = (idx) / total_clusters
+                            progress_bar.progress(progress)
+                            # st.write(f"Analyzing cluster {idx + 1}/{total_clusters}: {len(cluster.get('articles', []))} articles")
+                            
+                            analysis = analyze_cluster(cluster)
+                            if analysis:
+                                clusters.append({
+                                    'category': analysis.get('category', 'Unknown'),
+                                    'subject': analysis.get('subject', 'Unknown'),
+                                    'bias': analysis.get('bias', 0.0),
+                                    'cluster_size': len(cluster.get('articles', [])),
+                                    'articles': cluster.get('articles', [])
+                                })
+                    
+                        # Complete the progress bar
+                        progress_bar.progress(1.0)
+                        st.write(f"Analysis complete! Found {len(clusters)} valid clusters")
+                    else:
+                        st.warning("No clusters with 3 or more articles found")
+                    
+                    st.session_state.clusters = clusters
+                    st.session_state.is_loading_clusters = False
+                    del st.session_state.news_data  # Clean up
+                    st.rerun()
+                else:
+                    st.error("No news data found in session state")
+                    st.session_state.is_loading_clusters = False
         elif st.session_state.clusters:
             # Now display the clusters
             for i, cluster in enumerate(st.session_state.clusters):
                 # Determine if this cluster is being evaluated
-                is_evaluating = hasattr(st.session_state, 'evaluating_cluster') and st.session_state.evaluating_cluster == i
-                opacity = "1" if is_evaluating else "0.4" if hasattr(st.session_state, 'evaluating_cluster') else "1"
-                transition = "opacity 0.3s ease"
+                is_evaluating = (hasattr(st.session_state, 'evaluating_cluster') and 
+                                st.session_state.evaluating_cluster == i and 
+                                not hasattr(st.session_state, 'article_rejected'))
+                opacity = "1" if is_evaluating or not hasattr(st.session_state, 'evaluating_cluster') else "1"
+                transition = "opacity .9s ease"
                 
-                with st.expander(f"{cluster['subject']} ({cluster['category']})", expanded=True):
-                    st.markdown(
-                        f"""
-                        <div style="opacity: {opacity}; transition: {transition};">
-                            <div style="display: flex; align-items: center; width: 100%; padding: 4px 0;">
-                                <div style="flex: 0 0 auto; padding-right: 15px;">Articles: {cluster['cluster_size']}</div>
-                                <div style="flex: 1;">{create_custom_progress_bar(cluster.get('bias', 0), i)}</div>
-                            </div>
+                st.markdown(
+                    f"""
+                    <div style="opacity: {opacity}; transition: {transition}; padding: 1rem; border: 1px solid rgba(74, 111, 165, 0.1); border-radius: 8px; margin-bottom: 0.75rem; background-color: #1C1C1C;">
+                        <div style="font-weight: 500; font-size: 1em; margin-bottom: 0.5rem; color: rgba(255, 255, 255, 0.95);">
+                            {cluster['subject']}
                         </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
+                        <div style="color: rgba(192, 160, 128, 0.95); font-size: 0.85em; margin-bottom: 0.5rem;">
+                            {cluster['category']}
+                        </div>
+                        <div style="display: flex; align-items: center; width: 100%; padding: 4px 0;">
+                            <div style="flex: 0 0 auto; padding-right: 15px; font-size: 0.9em; color: rgba(255, 255, 255, 0.8);">
+                                Articles: {cluster['cluster_size']}
+                            </div>
+                            <div style="flex: 1;">{create_custom_progress_bar(cluster.get('bias', 0), i)}</div>
+                        </div>
+                        <div class="button-container" id="button_container_{i}">
+                        </div>
+                    </div>
                     
-                    if st.button("Evaluate Sources", key=f"cluster_{i}"):
+                    <style>
+                        /* Style for the button container */
+                        .button-container .stButton > button {{
+                            background: #4a6fa5;
+                            color: rgba(255, 255, 255, 0.95);
+                            border: none;
+                            padding: 8px 16px;
+                            border-radius: 4px;
+                            cursor: pointer;
+                            margin-top: 12px;
+                            width: 100%;
+                            font-size: 14px;
+                            font-weight: 500;
+                        }}
+                        
+                        .button-container .stButton > button:hover {{
+                            background: #5a7fb5;
+                            color: white;
+                        }}
+                        
+                        /* Ensure button container is properly nested */
+                        #button_container_{i} {{
+                            margin: 0;
+                            padding: 0;
+                        }}
+                    </style>
+                    """,
+                    unsafe_allow_html=True
+                )
+                
+                # Create a container for the button
+                button_container = st.container()
+                with button_container:
+                    if st.button("Evaluate Sources", key=f"eval_cluster_{i}"):
                         st.session_state.evaluating_cluster = i
                         with st.spinner("Generating article..."):
                             article_data = create_article(cluster)
@@ -1315,42 +1624,23 @@ def main():
                                 st.session_state.article_data = article_data
                                 st.session_state.current_step = 1
                                 st.session_state.clusters.pop(i)
-                                st.session_state.evaluating_cluster = None  # Clear evaluation state
+                                st.session_state.evaluating_cluster = None
                                 st.rerun()
                             else:
                                 st.error("Failed to generate article")
                                 st.session_state.evaluating_cluster = None
-        
-        # Show evaluation spinner in the same container
-        if hasattr(st.session_state, 'evaluating_cluster') and st.session_state.evaluating_cluster is not None:
-            cluster = st.session_state.clusters[st.session_state.evaluating_cluster]
-            st.markdown(f"""
-                <div style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 2rem; text-align: center;">
-                    <div class="evaluation-spinner" style="margin: 0 auto;">
-                        <style>
-                            .evaluation-spinner {{
-                                width: 60px;
-                                height: 60px;
-                                border: 5px solid #f3f3f3;
-                                border-top: 5px solid var(--accent-gold);
-                                border-radius: 50%;
-                                animation: spin 1.2s linear infinite;
-                            }}
-                            @keyframes spin {{
-                                0% {{ transform: rotate(0deg); }}
-                                100% {{ transform: rotate(360deg); }}
-                            }}
-                        </style>
-                    </div>
-                    <div style="margin-top: 1rem; color: var(--text-secondary);">
-                        <div style="color: var(--text-primary); font-weight: 500; font-size: 1.1em; margin-bottom: 0.5rem;">
-                            {cluster['subject']}
+                
+                # Add divider after the button (if not the last item)
+                if i < len(st.session_state.clusters) - 1:
+                    st.markdown("""
+                        <div style="height: 1px; 
+                                   background: linear-gradient(to right, 
+                                       rgba(74, 111, 165, 0.05), 
+                                       rgba(74, 111, 165, 0.2), 
+                                       rgba(74, 111, 165, 0.05)); 
+                                   margin: 1rem 0 1.5rem 0;">
                         </div>
-                        <div style="color: var(--accent-gold); font-weight: 500;">Evaluating Sources</div>
-                        <div style="font-size: 0.9em; margin-top: 0.5rem;">Analyzing content and generating article...</div>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
 
     with col2:
         display_wizard_content()
