@@ -1165,15 +1165,19 @@ def get_bias_color(bias_value):
         elif bias < -0.3: return '#2196F3'    # Left
         elif bias < -0.1: return '#03A9F4'    # Center Left
         elif bias <= 0.1: return '#4A6FA5'    # Neutral
-        elif bias <= 0.3: return '#FF9800'    # Center Right
-        elif bias <= 0.6: return '#F57C00'    # Right
-        else: return '#E65100'                # Far Right
+        elif bias <= 0.3: return '#FF6B6B'    # Center Right (Light Red)
+        elif bias <= 0.6: return '#E53935'    # Right (Medium Red)
+        else: return '#B71C1C'                # Far Right (Deep Red)
             
     except (ValueError, TypeError):
         return '#4A6FA5'  # Default theme blue for any errors
 
-def format_latest_headlines(headlines):
+def format_latest_headlines(headlines, selected_category=None):
     """Format headlines with metadata for sidebar display"""
+    # Filter headlines if category is selected
+    if selected_category and selected_category != "All Categories":
+        headlines = [h for h in headlines if h.get('cat', '').title() == selected_category]
+    
     st.markdown("""
         <style>
             .headline-item {
@@ -1365,6 +1369,21 @@ def fetch_latest_headlines():
     except Exception as e:
         st.error(f"Error fetching headlines: {str(e)}")
         return []
+
+def get_category_counts(headlines):
+    """Count categories and sort by frequency"""
+    category_counts = {}
+    for article in headlines:
+        category = article.get('cat', 'Unknown').title()
+        category_counts[category] = category_counts.get(category, 0) + 1
+    
+    # Sort by count (descending) and then alphabetically
+    sorted_categories = sorted(
+        category_counts.items(),
+        key=lambda x: (-x[1], x[0])
+    )
+    
+    return sorted_categories
 
 def main():
     st.set_page_config(layout="wide", page_title="AI News Brew Research")
@@ -1774,10 +1793,23 @@ def main():
             </div>
         """, unsafe_allow_html=True)
         
-        # Fetch and display latest headlines
+        # Fetch headlines
         headlines = fetch_latest_headlines()
         if headlines:
-            headlines_html = format_latest_headlines(headlines)
+            # Get category counts and create filter options
+            category_counts = get_category_counts(headlines)
+            
+            # Create category filter dropdown
+            category_options = ["All Categories"] + [cat for cat, _ in category_counts]
+            selected_category = st.selectbox(
+                "Filter by Category",
+                category_options,
+                format_func=lambda x: f"{x} ({dict(category_counts).get(x, len(headlines)) if x != 'All Categories' else len(headlines)})",
+                label_visibility="collapsed"
+            )
+            
+            # Display filtered headlines
+            headlines_html = format_latest_headlines(headlines, selected_category)
             st.markdown(headlines_html, unsafe_allow_html=True)
         else:
             st.caption("No recent headlines available")
