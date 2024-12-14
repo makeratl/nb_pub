@@ -1191,43 +1191,58 @@ def format_latest_headlines(headlines, selected_category=None, page=1, per_page=
     st.markdown("""
         <style>
             .headline-item {
-                padding: 0.4rem 0.5rem;  /* Reduced padding */
-                margin-bottom: 0.25rem;   /* Reduced margin between cards */
-                border-radius: 3px;      /* Slightly smaller radius */
+                padding: 0.4rem 0.5rem;
+                margin-bottom: 0.25rem;
+                border-radius: 3px;
                 transition: all 0.2s ease;
                 border: 1px solid rgba(255, 255, 255, 0.1);
                 position: relative;
             }
             .headline-text {
                 color: rgba(255, 255, 255, 0.95);
-                font-size: 0.8em;        /* Slightly smaller font */
-                line-height: 1.2;        /* Tighter line height */
-                margin-bottom: 0.25rem;   /* Reduced space before metadata */
+                font-size: 0.8em;
+                line-height: 1.2;
+                margin-bottom: 0.25rem;
                 font-weight: 500;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
             .headline-metadata {
                 display: flex;
                 align-items: center;
-                gap: 0.5rem;             /* Reduced gap between metadata items */
-                font-size: 0.65em;       /* Smaller metadata text */
+                gap: 0.5rem;
+                font-size: 0.65em;
                 color: rgba(255, 255, 255, 0.6);
-                line-height: 1;          /* Minimum line height */
+                line-height: 1;
+                min-width: 0; /* Enable flexbox text truncation */
             }
             .headline-category {
                 color: rgba(192, 160, 128, 0.95);
                 text-transform: uppercase;
                 font-weight: 500;
                 font-size: 0.9em;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                max-width: 80px;
             }
             .headline-topic {
                 color: rgba(74, 111, 165, 0.95);
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                flex: 1;
+                min-width: 0;
             }
             .headline-date {
                 margin-left: auto;
                 color: rgba(255, 255, 255, 0.5);
+                white-space: nowrap;
+                flex-shrink: 0;
             }
             .headline-list {
-                margin-top: 0.25rem;     /* Reduced top margin */
+                margin-top: 0.25rem;
             }
         </style>
     """, unsafe_allow_html=True)
@@ -1418,43 +1433,58 @@ def format_latest_headlines(headlines, selected_category=None, page=1, per_page=
     st.markdown("""
         <style>
             .headline-item {
-                padding: 0.4rem 0.5rem;  /* Reduced padding */
-                margin-bottom: 0.25rem;   /* Reduced margin between cards */
-                border-radius: 3px;      /* Slightly smaller radius */
+                padding: 0.4rem 0.5rem;
+                margin-bottom: 0.25rem;
+                border-radius: 3px;
                 transition: all 0.2s ease;
                 border: 1px solid rgba(255, 255, 255, 0.1);
                 position: relative;
             }
             .headline-text {
                 color: rgba(255, 255, 255, 0.95);
-                font-size: 0.8em;        /* Slightly smaller font */
-                line-height: 1.2;        /* Tighter line height */
-                margin-bottom: 0.25rem;   /* Reduced space before metadata */
+                font-size: 0.8em;
+                line-height: 1.2;
+                margin-bottom: 0.25rem;
                 font-weight: 500;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
             .headline-metadata {
                 display: flex;
                 align-items: center;
-                gap: 0.5rem;             /* Reduced gap between metadata items */
-                font-size: 0.65em;       /* Smaller metadata text */
+                gap: 0.5rem;
+                font-size: 0.65em;
                 color: rgba(255, 255, 255, 0.6);
-                line-height: 1;          /* Minimum line height */
+                line-height: 1;
+                min-width: 0; /* Enable flexbox text truncation */
             }
             .headline-category {
                 color: rgba(192, 160, 128, 0.95);
                 text-transform: uppercase;
                 font-weight: 500;
                 font-size: 0.9em;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                max-width: 80px;
             }
             .headline-topic {
                 color: rgba(74, 111, 165, 0.95);
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                flex: 1;
+                min-width: 0;
             }
             .headline-date {
                 margin-left: auto;
                 color: rgba(255, 255, 255, 0.5);
+                white-space: nowrap;
+                flex-shrink: 0;
             }
             .headline-list {
-                margin-top: 0.25rem;     /* Reduced top margin */
+                margin-top: 0.25rem;
             }
         </style>
     """, unsafe_allow_html=True)
@@ -1843,61 +1873,32 @@ def main():
             <style>
                 .latest-headlines {
                     margin-top: 0em;
-                    padding: 0.0rem 0;
+                    padding: 0;
                 }
                 .latest-headlines h4 {
                     color: var(--text-color);
-                    margin-bottom: 0.0rem;
+                    margin-bottom: 0.25rem;  /* Reduced from 0.5rem */
+                    font-size: 1.0em;        /* Slightly smaller header */
+                    opacity: 0.8;            /* Slightly dimmed */
                 }
-                .headline-list {
-                    list-style-type: none;
-                    padding-left: 0;
+                
+                /* Remove default Streamlit spacing */
+                .latest-headlines + div {
+                    margin-top: -0.5rem;
                 }
-                .headline-item {
-                    padding: 0.75rem;
-                    margin-bottom: 0.5rem;
-                    border-radius: 4px;
-                    transition: all 0.2s ease;
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                    position: relative;
+                
+                /* Reduce space after selectbox */
+                .stSelectbox {
+                    margin-bottom: -1rem;
                 }
-                .headline-item:hover {
-                    border-color: rgba(255, 255, 255, 0.2);
-                    transform: translateY(-1px);
-                }
-                .headline-text {
-                    color: rgba(255, 255, 255, 0.95);
-                    font-size: 0.85em;
-                    line-height: 1.4;
-                    margin-bottom: 0.5rem;
-                    font-weight: 500;
-                }
-                .headline-metadata {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.75rem;
-                    font-size: 0.7em;
-                    color: rgba(255, 255, 255, 0.6);
-                }
-                .headline-category {
-                    color: rgba(192, 160, 128, 0.95);
-                    text-transform: uppercase;
-                    font-weight: 500;
-                    font-size: 0.9em;
-                }
-                .headline-topic {
-                    color: rgba(74, 111, 165, 0.95);
-                }
-                .headline-date {
-                    margin-left: auto;
-                    color: rgba(255, 255, 255, 0.5);
-                }
-                .headline-list {
-                    margin-top: 0.5rem;
+                
+                /* Reduce space between category dropdown and first headline */
+                div[data-testid="stSelectbox"] + div {
+                    margin-top: -0.5rem;
                 }
             </style>
             <div class="latest-headlines">
-                <h4>Latest Headlines</h4>
+                Published Headlines
             </div>
         """, unsafe_allow_html=True)
         
@@ -1906,6 +1907,29 @@ def main():
         if headlines:
             # Get category counts and create filter options
             category_counts = get_category_counts(headlines)
+            
+            # Add custom CSS to reduce spacing around selectbox and headlines
+            st.markdown("""
+                <style>
+                    /* Reduce space after selectbox */
+                    .stSelectbox {
+                        margin-bottom: -1rem;
+                    }
+                    
+                    /* Adjust spacing for headlines section */
+                    .latest-headlines {
+                        margin-top: -0.5rem;
+                        padding: 0;
+                    }
+                    .latest-headlines h4 {
+                        margin-bottom: 0.5rem;
+                    }
+                    /* Reduce space between category dropdown and first headline */
+                    div[data-testid="stSelectbox"] + div {
+                        margin-top: -0.5rem;
+                    }
+                </style>
+            """, unsafe_allow_html=True)
             
             # Create category filter dropdown
             category_options = ["All Categories"] + [cat for cat, _ in category_counts]
