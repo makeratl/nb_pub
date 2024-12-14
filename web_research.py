@@ -222,6 +222,21 @@ def main():
                 label_visibility="collapsed"
             )
             
+            # Get topic filter from session state
+            topic_filter = st.session_state.get('topic')
+            if topic_filter and topic_filter.strip():  # Only apply filter if topic has content
+                topic_filter = topic_filter.strip()
+            else:
+                topic_filter = None  # Default to None for no filtering
+            
+            # Display headlines with both category and topic filtering
+            headlines_html, total_pages = format_latest_headlines(
+                headlines, 
+                selected_category, 
+                st.session_state.headline_page,
+                topic_filter=topic_filter
+            )
+            
             # Update session state when category changes manually
             if selected_category != st.session_state.get('selected_category'):
                 st.session_state.selected_category = selected_category
@@ -233,11 +248,6 @@ def main():
                 st.session_state.headline_page = 1
             
             # Display headlines
-            headlines_html, total_pages = format_latest_headlines(
-                headlines, 
-                selected_category, 
-                st.session_state.headline_page
-            )
             st.markdown(headlines_html, unsafe_allow_html=True)
             
             # Pagination controls

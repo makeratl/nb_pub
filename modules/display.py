@@ -30,13 +30,56 @@ def get_bias_color(bias_value):
     except (ValueError, TypeError):
         return 'rgba(28, 28, 28, 0.95)'  # Default dark background for any errors
 
-def format_latest_headlines(headlines, selected_category=None, page=1, per_page=5):
+def format_latest_headlines(headlines, selected_category=None, page=1, per_page=5, topic_filter=None):
     """Format headlines with metadata for sidebar display with pagination"""
-    # Filter headlines if category is selected
+    # Ensure page is valid
+    page = max(1, page)  # Ensure page is at least 1
+    
+    # First filter by category if selected
     if selected_category and selected_category != "All Categories":
         filtered_headlines = [h for h in headlines if h.get('cat', '').title() == selected_category]
     else:
         filtered_headlines = headlines
+    
+    # Apply topic keyword filtering if provided and not empty
+    if topic_filter and topic_filter.strip():
+        # Split the topic filter into terms
+        terms = []
+        current_term = []
+        in_quotes = False
+        
+        # Parse the topic filter string
+        for char in topic_filter:
+            if char == '"':
+                in_quotes = not in_quotes
+                if not in_quotes and current_term:
+                    terms.append(''.join(current_term))
+                    current_term = []
+            elif char == ' ' and not in_quotes:
+                if current_term:
+                    terms.append(''.join(current_term))
+                    current_term = []
+            else:
+                current_term.append(char)
+        
+        if current_term:
+            terms.append(''.join(current_term))
+        
+        # Filter headlines based on terms
+        for term in terms:
+            if term.startswith('"') and term.endswith('"'):
+                # Exact phrase match
+                phrase = term[1:-1].lower()
+                filtered_headlines = [
+                    h for h in filtered_headlines 
+                    if phrase in h.get('topic', '').lower() or phrase in h.get('AIHeadline', '').lower()
+                ]
+            else:
+                # Individual word match
+                filtered_headlines = [
+                    h for h in filtered_headlines 
+                    if term.lower() in h.get('topic', '').lower() or term.lower() in h.get('AIHeadline', '').lower()
+                ]
     
     # Paginate filtered headlines
     total_pages = math.ceil(len(filtered_headlines) / per_page)

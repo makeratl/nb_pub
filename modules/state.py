@@ -15,6 +15,10 @@ def init_session_state():
         st.session_state.haiku_image = None
     if 'publish_data' not in st.session_state:
         st.session_state.publish_data = None
+    if 'headline_page' not in st.session_state:
+        st.session_state.headline_page = 1
+    if 'selected_category' not in st.session_state:
+        st.session_state.selected_category = "All Categories"
 
 def reset_article_state():
     """Reset article-related session state"""
