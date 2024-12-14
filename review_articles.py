@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from chat_codegpt import chat_with_codegpt
 from colorama import init, Fore, Style
 import time  # Add this to the imports at the top
+import traceback
 
 # Initialize colorama
 init(autoreset=True)
@@ -81,126 +82,72 @@ def update_article_status(article_id: int, status: str, updates: dict = None) ->
         conn.close()
     return False
 
-def evaluate_article_with_ai(article: dict) -> Optional[dict]:
-    """Use AI to evaluate the article content"""
-    # Safely get values with defaults for missing fields
-    headline = article.get('AIHeadline', 'No headline available')
-    story = article.get('AIStory', 'No story available')
-    category = article.get('cat', 'No category available')
-    topic = article.get('topic', 'No topic available')
-    cited = article.get('Cited', 'No sources available')
-    bs_score = article.get('bs', 'No BS score available')
-    bs_prob = article.get('bs_p', 'No BS probability available')
+def evaluate_article_with_ai(article):
+    """Evaluate article using AI"""
+    prompt = f"""Evaluate this AI generated news article for quality and bias:
 
-    prompt = f"""Evaluate this article and provide a detailed analysis. Consider the following aspects:
+Article ID: {article['ID']}
+Headline: {article['AIHeadline']}
+Story: {article['AIStory']}
+Category: {article['cat']}
+Topic: {article['topic']}
+Base Score: {article['bs']}
+Citations: {article['Cited']}
 
-    Scoring Criteria (1-10 scale):
-    1. Story quality and factual basis (0-7 points)
-       - Clear narrative structure (0-5)
-       - Professional writing style (0-5)
+Analyze the article and return a JSON object with these metrics:
+1. quality_score: Rate overall quality 0-10
+2. cat: Assign most appropriate category
+3. topic: Identify main topic/subject
+4. bs_p: Political bias score (-1.0 to 1.0, where -1 is far left and 1 is far right)
+5. trend: Viral potential score (0-10)
+6. reasoning: Detailed analysis including three paragraph sections:
+   - Quality Analysis: Evaluate content quality, clarity, and accuracy
+   - Bias Analysis: Explain political lean and justify the bs_p score
+   - Viral Potential: Analyze viral potential and justify the trend score
 
-    2. Source Analysis (0-1 points)
-       - Source Quality Assessment:
-         * Source Credibility (+0.8)
-           - Sources are established news/media organizations
-           - Sources likely contain direct quotes and primary data
-         * Source Variety (+0.2)
-           - Multiple perspectives available through cited sources
-       - Source Political Lean Analysis (informational, not scoring):
-         * Note sources as:
-           - Left-leaning (e.g., MSNBC, HuffPost)
-           - Center/Neutral (e.g., Reuters, AP)
-           - Right-leaning (e.g., Fox News, NY Post)
-         Note: Our articles summarize key points from fuller source articles.
-               Direct quotes may be in source articles rather than our summary.
+Consider for viral potential:
+- Story uniqueness and novelty
+- Emotional impact and shareability
+- Current event relevance
+- Broader social implications
+- Similar past viral trends
+Note: Be strict with viral scoring - true viral potential is rare (most stories should score 3 or below)
 
-    3. Context and Completeness (0-2 points)
-       - Appropriate context provided
-       - Key information included
-       - Clear topic focus
+Return format example:
+{{
+    "quality_score": 7.5,
+    "cat": "Technology",
+    "topic": "AI Development",
+    "bs_p": -0.3,
+    "trend": 2.5,
+    "reasoning": "Quality Analysis: [detailed quality analysis]\\nBias Analysis: Article shows slight left lean (-0.3) due to [detailed bias analysis]\\nViral Potential: Story rates 2.5/10 for viral potential because [detailed viral trend analysis]"
+}}"""
 
-    Important Notes on Source Evaluation:
-    - Cited sources are complete articles containing additional context
-    - Our articles synthesize information from these fuller sources
-    - Direct citations are often in the source articles
-    - Evaluate source credibility rather than citation style
-    - Consider the depth of reporting available in source articles
-
-    Automatic Rejection Criteria (core issues only):
-    - Demonstrably false information
-    - Severe factual errors
-    - Complete lack of sources
-    Note: Source diversity and political lean should be noted but not trigger rejection
-
-    Article Details:
-    Headline: {headline}
-    Story: {story}
-    Category: {category}
-    Topic: {topic}
-    BS Score: {bs_score}
-    BS Probability: {bs_prob}
-    CitedSources: {cited}
-
-    Return a JSON object with the following structure:
-    {{
-        "quality_score": "Combined score from criteria above (1-10). Scores below 6 should result in rejection",
-        "category_assessment": "Correction to the Category if it is not in the defined list.",
-        "cat": "corrected category",
-        "topic_assessment": "evaluation of topic accuracy",
-        "topic": "corrected topic keywords",
-        "bias_analysis": "Source-by-source political lean breakdown:
-                         - List each source with its political categorization
-                         - Calculate left/center/right ratio
-                         - Note any missing viewpoint perspectives",
-        "bs_p": "Political lean score (0.0-1.0):
-                0.0-0.3: Balanced source distribution
-                0.3-0.7: Leans left or right
-                0.7-1.0: Heavy left or right bias
-                Include + for right bias, - for left bias
-                Example: 0.8 (heavy right), -0.8 (heavy left)",
-        "suggested_keywords": "list, of, relevant, keywords",
-        "recommendations": "'approved' if quality_score >= 6, 'rejected' if quality_score < 6",
-        "reasoning": "Detailed explanation including two sections:
-                     QUALITY ASSESSMENT:
-                     1. Source credibility and reliability
-                     2. Raw data quality assessment
-                     3. Overall quality score justification
-                     
-                     POLITICAL LEAN ASSESSMENT:
-                     1. Individual source categorization (left/center/right)
-                     2. Overall source distribution ratio
-                     3. Missing viewpoint analysis
-                     4. Final political lean score with direction (+/-)"
-    }}
-
-    Important: 
-    - Source Analysis Guidelines:
-      * Evaluate each source's known political lean
-      * Calculate overall source distribution
-      * Assess raw data quality from each source
-      * Consider source type hierarchy (primary > secondary)
-    
-    - Scoring Considerations:
-      * High scores (6-10): Focus on factual accuracy and clarity
-      * Low scores (1-5): Poor factual support or unclear presentation
-      * Source political lean should be noted but not heavily impact score
-      * Lack of source diversity reduces score by max 0.5 points
-
-    - Bias Score Guidelines:
-      * Document source political leans for transparency
-      * Calculate approximate left/right distribution
-      * Consider the full context available in source articles
-      * Focus on source credibility over citation style
-      * Missing perspectives should be noted but not heavily penalized
-    """
-    
     try:
-        evaluation = chat_with_codegpt(prompt)
-        if evaluation:
-            return json.loads(evaluation)
+        response = chat_with_codegpt(prompt)
+        # print("\nDEBUG - Raw AI Response:")
+        # print(response)
+        
+        parsed_response = json.loads(response)
+        # print("\nDEBUG - Parsed JSON:")
+        # print(json.dumps(parsed_response, indent=2))
+        
+        # Validate trend score exists and is numeric
+        trend_score = parsed_response.get('trend')
+        # print(f"\nDEBUG - Trend Score: {trend_score} (Type: {type(trend_score)})")
+        
+        if trend_score is not None:
+            try:
+                parsed_response['trend'] = float(trend_score)
+            except (ValueError, TypeError):
+                # print(f"DEBUG - Could not convert trend score to float: {trend_score}")
+                parsed_response['trend'] = 0.0
+        
+        return parsed_response
     except Exception as e:
-        print(f"Error during AI evaluation: {str(e)}")
-    return None
+        print(f"Error in evaluate_article_with_ai: {str(e)}")
+        print(f"Full traceback: {traceback.format_exc()}")
+        return None
 
 def display_article(article: dict):
     """Display article information in a formatted way"""
