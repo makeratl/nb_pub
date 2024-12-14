@@ -84,45 +84,33 @@ def update_article_status(article_id: int, status: str, updates: dict = None) ->
 
 def evaluate_article_with_ai(article):
     """Evaluate article using AI"""
-    prompt = f"""Evaluate this AI generated news article for quality and bias:
-
-Article ID: {article['ID']}
-Headline: {article['AIHeadline']}
-Story: {article['AIStory']}
-Category: {article['cat']}
-Topic: {article['topic']}
-Base Score: {article['bs']}
-Citations: {article['Cited']}
-
-Analyze the article and return a JSON object with these metrics:
-1. quality_score: Rate overall quality 0-10
-2. cat: Assign most appropriate category
-3. topic: Identify main topic/subject
-4. bs_p: Political bias score (-1.0 to 1.0, where -1 is far left and 1 is far right)
-5. trend: Viral potential score (0-10)
-6. reasoning: Detailed analysis including three paragraph sections:
-   - Quality Analysis: Evaluate content quality, clarity, and accuracy
-   - Bias Analysis: Explain political lean and justify the bs_p score
-   - Viral Potential: Analyze viral potential and justify the trend score
-
-Consider for viral potential:
-- Story uniqueness and novelty
-- Emotional impact and shareability
-- Current event relevance
-- Broader social implications
-- Similar past viral trends
-Note: Be strict with viral scoring - true viral potential is rare (most stories should score 3 or below)
-
-Return format example:
-{{
-    "quality_score": 7.5,
-    "cat": "Technology",
-    "topic": "AI Development",
-    "bs_p": -0.3,
-    "trend": 2.5,
-    "reasoning": "Quality Analysis: [detailed quality analysis]\\nBias Analysis: Article shows slight left lean (-0.3) due to [detailed bias analysis]\\nViral Potential: Story rates 2.5/10 for viral potential because [detailed viral trend analysis]"
-}}"""
-
+    evaluation_context = article.get('evaluation_context', '')
+    
+    prompt = f"""
+    {evaluation_context}
+    
+    Please evaluate this news article according to the above guidelines:
+    
+    Headline: {article['AIHeadline']}
+    Story: {article['AIStory']}
+    Sources: {article['Cited']}
+    
+    Provide a detailed analysis covering:
+    1. Quality Analysis: Evaluate based on the guidelines, focusing on source credibility and journalistic standards
+    2. Bias Analysis: Assess political lean and perspective balance
+    3. Viral Potential: Rate shareability and public interest
+    
+    Return a JSON object with:
+    {{
+        "quality_score": (0-10),
+        "bs_p": ("Far Left"/"Left"/"Center Left"/"Neutral"/"Center Right"/"Right"/"Far Right"),
+        "cat": "category",
+        "topic": "main topic",
+        "trend": (0-10),
+        "reasoning": "Detailed analysis with Quality Analysis:, Bias Analysis:, and Viral Potential: sections"
+    }}
+    """
+    
     try:
         response = chat_with_codegpt(prompt)
         # print("\nDEBUG - Raw AI Response:")
