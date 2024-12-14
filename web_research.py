@@ -340,27 +340,17 @@ def display_article_step():
     # Main content
     col1, col2 = st.columns([2, 1])
     with col1:
-        st.markdown("### Summary")
+        st.markdown("#### Summary")
         st.markdown(st.session_state.article_data['summary'])
         
         with st.expander("Full Story", expanded=False):
             st.markdown(st.session_state.article_data['story'], unsafe_allow_html=True)
     
     with col2:
-        st.markdown("### Haiku")
-        # Add style for paragraph margins and display haiku
-        st.markdown("""
-            <style>
-                .element-container div.stMarkdown p {
-                    margin: 0.5em 0;
-                }
-            </style>
-        """, unsafe_allow_html=True)
+        st.markdown("#### Haiku")
+        # Add style for paragraph margins and display haiku 
         haiku_lines = st.session_state.article_data['haiku'].split('\n')
-        for i, line in enumerate(haiku_lines):
-            st.markdown(line.strip(), unsafe_allow_html=True)
-            if i < len(haiku_lines) - 1:
-                st.markdown("<br>", unsafe_allow_html=True)
+        st.write(f"{haiku_lines[0].strip()}<br>{haiku_lines[1].strip()}<br>{haiku_lines[2].strip()}", unsafe_allow_html=True)
         
         with st.expander("Source Articles", expanded=False):
             for article in st.session_state.selected_cluster['articles']:
@@ -718,6 +708,79 @@ def create_custom_progress_bar(bias_value, i):
     except Exception:
         return ""  # Return empty string on error
 
+def display_wizard_content():
+    """Display the wizard content with proper container"""
+    if st.session_state.selected_cluster and st.session_state.article_data:
+        # Add custom CSS for wizard layout
+        # st.markdown("""
+        #     <style>
+        #         /* Container styles */
+        #         [data-testid="stVerticalBlock"] > [data-testid="stVerticalBlock"] {
+        #             background-color: #1E1E1E !important;
+        #             border: 1px solid rgba(255,255,255,0.1) !important;
+        #             border-radius: 8px !important;
+        #             padding: 1rem !important;
+        #             color: rgba(255,255,255,0.9) !important;
+        #             margin-top: 0 !important;
+        #         }
+                
+        #         /* Text colors for dark theme */
+        #         [data-testid="stVerticalBlock"] h1,
+        #         [data-testid="stVerticalBlock"] h2,
+        #         [data-testid="stVerticalBlock"] h3 {
+        #             color: rgba(255,255,255,0.9) !important;
+        #         }
+                
+        #         [data-testid="stVerticalBlock"] p {
+        #             color: rgba(255,255,255,0.8) !important;
+        #         }
+                
+        #         /* Progress bar styling */
+        #         div[data-testid="stProgress"] {
+        #             padding: 0.25rem 0 !important;
+        #         }
+                
+        #         div[data-testid="stProgress"] > div > div {
+        #             background-color: var(--accent-blue) !important;
+        #         }
+                
+        #         /* Caption styling */
+        #         .caption {
+        #             color: rgba(255,255,255,0.7) !important;
+        #             margin: 0 0 0.5rem 0 !important;
+        #         }
+                
+        #         /* Button styling */
+        #         .stButton > button {
+        #             background-color: #2E2E2E !important;
+        #             color: rgba(255,255,255,0.9) !important;
+        #             border: 1px solid rgba(255,255,255,0.1) !important;
+        #         }
+                
+        #         .stButton > button:hover {
+        #             background-color: #3E3E3E !important;
+        #             border-color: rgba(255,255,255,0.2) !important;
+        #         }
+        #     </style>
+        # """, unsafe_allow_html=True)
+        
+        # Use container instead of expander
+        with st.container():
+            # Display step text before progress bar
+            steps = ["Generate", "Review", "Visualize", "Publish"]
+            st.caption(f"Step {st.session_state.current_step}/4: {steps[st.session_state.current_step-1]}")
+            progress = st.progress(st.session_state.current_step / 4)
+            
+            # Display appropriate step content
+            if st.session_state.current_step == 1:
+                display_article_step()
+            elif st.session_state.current_step == 2:
+                display_review_step()
+            elif st.session_state.current_step == 3:
+                display_image_step()
+            else:
+                display_final_review()
+
 def main():
     st.set_page_config(layout="wide", page_title="AI News Brew Research")
     
@@ -1003,7 +1066,41 @@ def main():
                 st.session_state.is_loading_clusters = True
                 st.rerun()
 
-    # Main content area
+    # Main content area styling
+    st.markdown("""
+        <style>
+            /* Remove default padding from columns */
+            [data-testid="column"] {
+                padding: 0 !important;
+            }
+            
+            /* Add right padding to first column for spacing */
+            [data-testid="column"]:first-child {
+                padding-right: 1rem !important;
+            }
+            
+            /* Style second column with dark background */
+            [data-testid="column"]:nth-child(2) {
+                background-color: #1E1E1E !important;
+                border-radius: 8px !important;
+                padding: 1rem !important;
+                border: 1px solid rgba(255,255,255,0.1) !important;
+            }
+            
+            /* Remove top margin from the first element in the wizard */
+            .stExpander {
+                margin-top: 0 !important;
+            }
+            
+            /* Adjust container within dark background */
+            [data-testid="column"]:nth-child(2) [data-testid="stVerticalBlock"] > [data-testid="stVerticalBlock"] {
+                background-color: #2E2E2E !important;
+                margin: 0 !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # Create columns with custom spacing
     col1, col2 = st.columns([2, 3])
     
     # Clear columns if we're starting a new search
@@ -1066,7 +1163,7 @@ def main():
                                     width: {progress}% !important;
                                 }}
                             </style>
-                            <div style="text-align: center; color: var(--text-secondary); font-size: 0.9em; margin-top: 10px; display: none;">
+                            <div style="text-align: center; color: var(--text-secondary); font-size: 0.9em; margin-top: 10px;">
                                 Processing cluster {processed_clusters} of {total_clusters}
                             </div>
                         """, unsafe_allow_html=True)
@@ -1080,43 +1177,14 @@ def main():
             st.session_state.clusters = clusters
             st.session_state.is_loading_clusters = False
             st.rerun()
-
+    
     with col1:
         if 'is_loading_clusters' not in st.session_state:
             st.session_state.is_loading_clusters = False
             
         if st.session_state.is_loading_clusters:
-            st.markdown("""
-                <div style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 2rem; text-align: center;">
-                    <div class="loading-spinner" style="margin: 0 auto;">
-                        <style>
-                            .loading-spinner {
-                                width: 50px;
-                                height: 50px;
-                                border: 5px solid #f3f3f3;
-                                border-top: 5px solid var(--accent-blue);
-                                border-radius: 50%;
-                                animation: spin 1s linear infinite;
-                            }
-                            @keyframes spin {
-                                0% { transform: rotate(0deg); }
-                                100% { transform: rotate(360deg); }
-                            }
-                        </style>
-                    </div>
-                    <div style="margin-top: 1.5rem; color: var(--text-secondary);">
-                        <div style="color: var(--accent-blue); font-weight: 500; margin-bottom: 0.5rem;">
-                            Processing News Data
-                        </div>
-                        <div style="font-size: 0.9em; margin: 0.3rem 0;">1. Fetching latest news</div>
-                        <div style="font-size: 0.9em; margin: 0.3rem 0;">2. Processing clusters</div>
-                        <div style="font-size: 0.9em; margin: 0.3rem 0;">3. Analyzing content & bias</div>
-                        <div style="margin-top: 1rem; font-size: 0.8em; opacity: 0.8;">
-                            Please wait while AI evaluates the news clusters
-                        </div>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
+            # Loading spinner is now handled above
+            pass
         elif st.session_state.clusters:
             # Now display the clusters
             for i, cluster in enumerate(st.session_state.clusters):
@@ -1185,122 +1253,8 @@ def main():
             """, unsafe_allow_html=True)
 
     with col2:
-        if st.session_state.selected_cluster and st.session_state.article_data:
-            # Add custom CSS for wizard layout
-            st.markdown("""
-                <style>
-                    /* Reduce spacing between wizard elements */
-                    .block-container > div > div > div:has(h2) {
-                        margin-bottom: 0.5rem !important;
-                    }
-                    .block-container > div > div > div:has(button) {
-                        margin-top: 0.25rem !important;
-                        margin-bottom: 0.25rem !important;
-                    }
-                    /* Remove extra padding from progress bar */
-                    div[data-testid="stProgress"] {
-                        padding-top: 0.25rem !important;
-                        padding-bottom: 0.25rem !important;
-                    }
-                    /* Tighten caption spacing */
-                    .caption {
-                        margin-top: 0 !important;
-                        margin-bottom: 0.25rem !important;
-                    }
-                    /* Reduce button margins */
-                    .stButton > button {
-                        margin: 0.25rem 0 !important;
-                    }
-                    /* Reduce divider spacing */
-                    hr {
-                        margin: 0.5rem 0 !important;
-                    }
-                    /* Tighten spacing around content sections */
-                    .element-container {
-                        margin: 0.25rem 0 !important;
-                    }
-                </style>
-            """, unsafe_allow_html=True)
-            
-            # Rest of your existing display logic for steps
-            # Add a progress indicator
-            progress = st.progress(st.session_state.current_step / 4)
-            steps = ["Generate", "Review", "Visualize", "Publish"]
-            st.caption(f"Step {st.session_state.current_step}/4: {steps[st.session_state.current_step-1]}")
-            
-            # Step 1: Article Generation
-            if st.session_state.current_step == 1:
-                display_article_step()
-                if st.button("Continue to Review"):
-                    with st.spinner("Running AI review..."):
-                        evaluation = review_article(st.session_state.article_data)
-                        if evaluation:
-                            st.session_state.evaluation = evaluation
-                            st.session_state.current_step = 2
-                            st.rerun()
-            
-            # Step 2: AI Review
-            elif st.session_state.current_step == 2:
-                display_review_step()
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("Accept and Continue", key="main_review_accept"):
-                        # Format citations
-                        sources = []
-                        for i, article in enumerate(st.session_state.selected_cluster['articles'][:8], 1):
-                            sources.append([i, article['link']])
-                            
-                        st.session_state.publish_data = {
-                            "AIHeadline": st.session_state.article_data['headline'],
-                            "AIHaiku": st.session_state.article_data['haiku'],
-                            "AIStory": st.session_state.article_data['story'],
-                            "AISummary": st.session_state.article_data['summary'],
-                            "bs": f"{st.session_state.selected_cluster['category']} | High Confidence | {st.session_state.selected_cluster['subject']}",
-                            "topic": st.session_state.evaluation.get('topic', st.session_state.selected_cluster['category']),
-                            "cat": st.session_state.evaluation.get('cat', st.session_state.selected_cluster['subject']),
-                            "bs_p": st.session_state.evaluation.get('bs_p', ''),
-                            "qas": st.session_state.evaluation.get('quality_score', ''),
-                            "Cited": json.dumps(sources)  # Add citations
-                        }
-                        with open('publish.json', 'w') as f:
-                            json.dump(st.session_state.publish_data, f, indent=2)
-                        st.session_state.current_step = 3
-                        st.rerun()
-                with col2:
-                    if st.button("Reject Article", key="main_review_reject"):
-                        reset_article_state()
-                        st.rerun()
-            
-            # Step 3: Image Generation
-            elif st.session_state.current_step == 3:
-                display_image_step()
-                if st.session_state.haiku_image is not None:
-                    if st.button("Continue to Final Review", key="main_continue_review"):
-                        st.session_state.current_step = 4
-                        st.rerun()
-            
-            # Step 4: Final Review and Publication
-            else:
-                display_final_review()
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("Publish Article", key="main_publish"):
-                        with st.spinner("Publishing article..."):
-                            article_id = publish_article(
-                                st.session_state.publish_data,
-                                os.environ.get("PUBLISH_API_KEY")
-                            )
-                            if article_id:
-                                article_url = f"https://ainewsbrew.com/article/{article_id}"
-                                st.session_state.publication_success = True
-                                st.session_state.published_article_id = article_id
-                                st.session_state.published_article_url = article_url
-                                st.rerun()
-                with col2:
-                    if st.button("Cancel Publication", key="main_cancel"):
-                        reset_article_state()
-                        st.rerun()
-    
+        display_wizard_content()
+
     # Show success view if publication was successful
     if hasattr(st.session_state, 'publication_success') and st.session_state.publication_success:
         display_publication_success(
