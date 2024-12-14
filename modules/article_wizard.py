@@ -6,23 +6,59 @@ from publish_utils import generate_and_encode_images, publish_article
 import json
 import os
 
-def display_article_step():
-    """Display the generated article content"""
-    # Header section with reduced spacing
-    st.markdown(f"""
-        <div style="margin-bottom: 0.5rem;">
-            <h2 style="margin: 0;">{st.session_state.article_data['headline']}</h2>
-        </div>
+def create_step_header(headline, buttons):
+    """Create consistent header with headline and action buttons"""
+    st.markdown("""
+        <style>
+            .step-header {
+                margin-bottom: 2rem;
+                padding: 1rem;
+                background: rgba(74, 111, 165, 0.05);
+                border-radius: 8px;
+                border: 1px solid rgba(74, 111, 165, 0.1);
+            }
+            .headline-text {
+                color: rgba(255, 255, 255, 0.95);
+                font-size: 1.2em;
+                font-weight: 500;
+                margin-bottom: 1rem;
+            }
+            .action-buttons {
+                display: flex;
+                gap: 1rem;
+            }
+        </style>
+        <div class="step-header">
+            <div class="headline-text">{headline}</div>
+            <div class="action-buttons">
     """, unsafe_allow_html=True)
     
-    # Navigation controls
-    if st.button("Continue to Audit", key="continue_review"):
+    # Create columns for buttons
+    cols = st.columns(len(buttons))
+    for col, (label, key, callback) in zip(cols, buttons):
+        with col:
+            if st.button(label, key=key):
+                callback()
+    
+    st.markdown("</div></div>", unsafe_allow_html=True)
+
+def display_article_step():
+    """Display the generated article content"""
+    headline = st.session_state.article_data['headline']
+    
+    def continue_to_audit():
         with st.spinner("Running AI audit..."):
             evaluation = review_article(st.session_state.article_data)
             if evaluation:
                 st.session_state.evaluation = evaluation
                 st.session_state.current_step = 2
                 st.rerun()
+    
+    buttons = [
+        ("Continue to Audit", "continue_review", continue_to_audit)
+    ]
+    
+    create_step_header(headline, buttons)
     
     # Group sources by domain/publisher
     source_groups = {}
@@ -184,6 +220,58 @@ def review_article(article_data):
 
 def display_review_step():
     """Display the AI review results and article content"""
+    headline = st.session_state.article_data['headline']
+    
+    def continue_to_image():
+        # Format citations
+        sources = []
+        for i, article in enumerate(st.session_state.selected_cluster['articles'][:8], 1):
+            sources.append([i, article['link']])
+        
+        # Create publish data
+        bias_mapping = {
+            'Far Left': -1.0,
+            'Left': -0.6,
+            'Center Left': -0.3,
+            'Neutral': 0.0,
+            'Center Right': 0.3,
+            'Right': 0.6,
+            'Far Right': 1.0
+        }
+        
+        # Convert text bias to numeric value
+        bias_text = st.session_state.evaluation.get('bs_p', 'Neutral')
+        bias_numeric = bias_mapping.get(bias_text, 0.0)  # Default to 0.0 if not found
+        
+        st.session_state.publish_data = {
+            "AIHeadline": st.session_state.article_data['headline'],
+            "AIHaiku": st.session_state.article_data['haiku'],
+            "AIStory": st.session_state.article_data['story'],
+            "AISummary": st.session_state.article_data['summary'],
+            "bs": f"{st.session_state.selected_cluster['category']} | High Confidence | {st.session_state.selected_cluster['subject']}",
+            "topic": st.session_state.evaluation.get('topic', st.session_state.selected_cluster['category']),
+            "cat": st.session_state.evaluation.get('cat', st.session_state.selected_cluster['subject']),
+            "bs_p": bias_numeric,  # Store as numeric value instead of text
+            "qas": st.session_state.evaluation.get('quality_score', ''),
+            "trend": st.session_state.evaluation.get('trend', 0.0),
+            "Cited": json.dumps(sources)
+        }
+        
+        st.session_state.current_step = 3
+        st.rerun()
+    
+    def reject_article():
+        st.session_state.article_rejected = True
+        reset_article_state()
+        st.rerun()
+    
+    buttons = [
+        ("Continue to Image Generation", "continue_to_image", continue_to_image),
+        ("Reject Article", "review_reject", reject_article)
+    ]
+    
+    create_step_header(headline, buttons)
+    
     eval_data = st.session_state.evaluation
     
     if not eval_data:
@@ -428,91 +516,107 @@ def display_review_step():
                 trend_score = 0.0
             st.metric("Propagation Index", f"{trend_score:.1f}/10")
         
-        # Navigation controls
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Continue to Image Generation", key="continue_to_image"):
-                # Format citations
-                sources = []
-                for i, article in enumerate(st.session_state.selected_cluster['articles'][:8], 1):
-                    sources.append([i, article['link']])
-                
-                # Create publish data
-                bias_mapping = {
-                    'Far Left': -1.0,
-                    'Left': -0.6,
-                    'Center Left': -0.3,
-                    'Neutral': 0.0,
-                    'Center Right': 0.3,
-                    'Right': 0.6,
-                    'Far Right': 1.0
+        # Add story preview section below the analysis and metrics
+        st.markdown("""
+            <style>
+                .story-preview {
+                    margin-top: 2rem;
+                    padding: 1rem;
+                    background: rgba(74, 111, 165, 0.05);
+                    border-radius: 8px;
+                    border: 1px solid rgba(74, 111, 165, 0.1);
                 }
-                
-                # Convert text bias to numeric value
-                bias_text = st.session_state.evaluation.get('bs_p', 'Neutral')
-                bias_numeric = bias_mapping.get(bias_text, 0.0)  # Default to 0.0 if not found
-                
-                st.session_state.publish_data = {
-                    "AIHeadline": st.session_state.article_data['headline'],
-                    "AIHaiku": st.session_state.article_data['haiku'],
-                    "AIStory": st.session_state.article_data['story'],
-                    "AISummary": st.session_state.article_data['summary'],
-                    "bs": f"{st.session_state.selected_cluster['category']} | High Confidence | {st.session_state.selected_cluster['subject']}",
-                    "topic": st.session_state.evaluation.get('topic', st.session_state.selected_cluster['category']),
-                    "cat": st.session_state.evaluation.get('cat', st.session_state.selected_cluster['subject']),
-                    "bs_p": bias_numeric,  # Store as numeric value instead of text
-                    "qas": st.session_state.evaluation.get('quality_score', ''),
-                    "trend": st.session_state.evaluation.get('trend', 0.0),
-                    "Cited": json.dumps(sources)
+                .story-preview-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 1rem;
                 }
-                
-                st.session_state.current_step = 3
-                st.rerun()
-        with col2:
-            if st.button("Reject Article", key="review_reject"):
-                st.session_state.article_rejected = True
-                reset_article_state()
-                st.rerun()
+                .story-preview-title {
+                    color: #4A6FA5;
+                    font-size: 1.1rem;
+                    font-weight: 500;
+                }
+            </style>
+        """, unsafe_allow_html=True)
+        
+        # Create tabs for different content views
+        preview_tabs = st.tabs(["Story", "Summary", "Haiku"])
+        
+        with preview_tabs[0]:
+            st.markdown("""
+                <div class="story-preview">
+                    <div class="story-preview-header">
+                        <div class="story-preview-title">Generated Story</div>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+            st.markdown(st.session_state.article_data['story'], unsafe_allow_html=True)
+        
+        with preview_tabs[1]:
+            st.markdown("""
+                <div class="story-preview">
+                    <div class="story-preview-header">
+                        <div class="story-preview-title">Summary</div>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+            st.markdown(st.session_state.article_data['summary'])
+        
+        with preview_tabs[2]:
+            st.markdown("""
+                <div class="story-preview">
+                    <div class="story-preview-header">
+                        <div class="story-preview-title">Haiku</div>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+            haiku_lines = st.session_state.article_data['haiku'].split('\n')
+            for line in haiku_lines:
+                st.markdown(f"*{line.strip()}*")
     
     except Exception as e:
         st.error(f"Error displaying evaluation results: {str(e)}")
 
 def display_image_step():
     """Display the haiku image generation step"""
+    headline = st.session_state.publish_data.get('AIHeadline', '')
+    
+    def regenerate_image():
+        with st.spinner("Generating new image..."):
+            image_data, image_haiku = generate_and_encode_images(
+                st.session_state.publish_data.get('AIHaiku', ''),
+                st.session_state.publish_data.get('AIHeadline', '')
+            )
+            if image_data and image_haiku:
+                # Update both session state and publish data
+                st.session_state.haiku_image = image_haiku
+                st.session_state.publish_data.update({
+                    'image_data': image_data,
+                    'image_haiku': image_haiku
+                })
+                # Save updated publish data to file
+                with open('publish.json', 'w') as f:
+                    json.dump(st.session_state.publish_data, f, indent=2)
+                st.rerun()
+            else:
+                st.error("Failed to generate new image")
+    
+    def continue_to_final():
+        st.session_state.current_step = 4
+        st.rerun()
+    
+    buttons = [
+        ("Regenerate Image", "regenerate_image", regenerate_image),
+        ("Continue to Final Review", "image_continue_review", continue_to_final)
+    ]
+    
+    create_step_header(headline, buttons)
+    
     if not st.session_state.publish_data:
         st.error("No publication data available for image generation")
         reset_article_state()
         return
-    
-    # Header section
-    st.subheader(st.session_state.publish_data.get('AIHeadline', ''))
-    
-    # Navigation controls
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Regenerate Image"):
-            with st.spinner("Generating new image..."):
-                image_data, image_haiku = generate_and_encode_images(
-                    st.session_state.publish_data.get('AIHaiku', ''),
-                    st.session_state.publish_data.get('AIHeadline', '')
-                )
-                if image_data and image_haiku:
-                    # Update both session state and publish data
-                    st.session_state.haiku_image = image_haiku
-                    st.session_state.publish_data.update({
-                        'image_data': image_data,
-                        'image_haiku': image_haiku
-                    })
-                    # Save updated publish data to file
-                    with open('publish.json', 'w') as f:
-                        json.dump(st.session_state.publish_data, f, indent=2)
-                    st.rerun()
-                else:
-                    st.error("Failed to generate new image")
-    with col2:
-        if st.button("Continue to Final Review", key="image_continue_review"):
-            st.session_state.current_step = 4
-            st.rerun()
     
     # Main content
     st.markdown("#### Haiku Visualization")
@@ -549,37 +653,35 @@ def display_image_step():
 
 def display_final_review():
     """Display final review before publication"""
+    headline = st.session_state.publish_data.get('AIHeadline', '')
+    
+    def publish_article_action():
+        with st.spinner("Publishing article..."):
+            article_id = publish_article(
+                st.session_state.publish_data,
+                os.environ.get("PUBLISH_API_KEY")
+            )
+            if article_id:
+                st.session_state.publication_success = True
+                st.session_state.published_article_id = article_id
+                st.session_state.published_article_url = f"https://ainewsbrew.com/article/{article_id}"
+                st.success(f"""Article published successfully! 
+                    \nID: {article_id}
+                    \nView at: [{st.session_state.published_article_url}]({st.session_state.published_article_url})""")
+                st.rerun()  # Rerun to update button state
+    
+    is_published = hasattr(st.session_state, 'publication_success') and st.session_state.publication_success
+    
+    buttons = [
+        ("Publish Article", "final_review_publish", publish_article_action)
+    ]
+    
+    create_step_header(headline, buttons)
+    
     if not st.session_state.publish_data:
         st.error("No publication data available")
         reset_article_state()
         return
-    
-    # Header section
-    st.subheader(st.session_state.publish_data.get('AIHeadline', ''))
-    
-    # Navigation controls
-    col1, col2 = st.columns(2)
-    with col1:
-        # Check if article has already been published
-        is_published = hasattr(st.session_state, 'publication_success') and st.session_state.publication_success
-        
-        # Create publish button with disabled state based on publication status
-        if st.button("Publish Article", 
-                    key="final_review_publish", 
-                    disabled=is_published):
-            with st.spinner("Publishing article..."):
-                article_id = publish_article(
-                    st.session_state.publish_data,
-                    os.environ.get("PUBLISH_API_KEY")
-                )
-                if article_id:
-                    st.session_state.publication_success = True
-                    st.session_state.published_article_id = article_id
-                    st.session_state.published_article_url = f"https://ainewsbrew.com/article/{article_id}"
-                    st.success(f"""Article published successfully! 
-                        \nID: {article_id}
-                        \nView at: [{st.session_state.published_article_url}]({st.session_state.published_article_url})""")
-                    st.rerun()  # Rerun to update button state
     
     try:
         col1, col2 = st.columns([3, 2])
