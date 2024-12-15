@@ -8,28 +8,31 @@ import os
 
 def create_step_header(headline, buttons):
     """Create consistent header with headline and action buttons"""
-    st.markdown("""
+    # Format the headline string with proper HTML escaping
+    formatted_headline = headline.replace('"', '&quot;').replace("'", "&#39;")
+    
+    st.markdown(f"""
         <style>
-            .step-header {
+            .step-header {{
                 margin-bottom: 2rem;
                 padding: 1rem;
                 background: rgba(74, 111, 165, 0.05);
                 border-radius: 8px;
                 border: 1px solid rgba(74, 111, 165, 0.1);
-            }
-            .headline-text {
+            }}
+            .headline-text {{
                 color: rgba(255, 255, 255, 0.95);
                 font-size: 1.2em;
                 font-weight: 500;
                 margin-bottom: 1rem;
-            }
-            .action-buttons {
+            }}
+            .action-buttons {{
                 display: flex;
                 gap: 1rem;
-            }
+            }}
         </style>
         <div class="step-header">
-            <div class="headline-text">{headline}</div>
+            <div class="headline-text">{formatted_headline}</div>
             <div class="action-buttons">
     """, unsafe_allow_html=True)
     
@@ -44,7 +47,7 @@ def create_step_header(headline, buttons):
 
 def display_article_step():
     """Display the generated article content"""
-    headline = st.session_state.article_data['headline']
+    headline = st.session_state.article_data.get('headline', '')
     
     def continue_to_audit():
         with st.spinner("Running AI audit..."):
@@ -220,7 +223,7 @@ def review_article(article_data):
 
 def display_review_step():
     """Display the AI review results and article content"""
-    headline = st.session_state.article_data['headline']
+    headline = st.session_state.article_data.get('headline', '')
     
     def continue_to_image():
         # Format citations
@@ -348,6 +351,24 @@ def display_review_step():
                 div[data-testid="metric-container"] div[data-testid="metric-value"] {
                     text-align: center;
                     font-size: 1.2rem !important;
+                }
+                
+                .pagination-nav {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    width: 100%;
+                    margin-top: 1rem;
+                }
+                
+                .pagination-nav .pagination-text {
+                    flex-grow: 1;
+                    text-align: center;
+                }
+                
+                .pagination-nav .pagination-arrow {
+                    cursor: pointer;
+                    padding: 0.25rem;
                 }
             </style>
         """, unsafe_allow_html=True)
@@ -577,6 +598,42 @@ def display_review_step():
     
     except Exception as e:
         st.error(f"Error displaying evaluation results: {str(e)}")
+    
+    # Pagination for published headlines
+    if 'headline_page' not in st.session_state:
+        st.session_state.headline_page = 1
+    
+    def prev_page():
+        st.session_state.headline_page = max(1, st.session_state.headline_page - 1)
+    
+    def next_page():
+        st.session_state.headline_page += 1
+    
+    # Display pagination using Streamlit components
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if st.button("← Prev"):
+            prev_page()
+    
+    with col2:
+        st.write(f"Page {st.session_state.headline_page}", unsafe_allow_html=True)
+    
+    with col3:
+        if st.button("Next →"):
+            next_page()
+    
+    # Custom CSS for pagination styling
+    st.markdown("""
+        <style>
+            div.stButton > button {
+                width: 100%;
+            }
+            div.stButton > button:hover {
+                background-color: #e0e2e6;
+            }
+        </style>
+    """, unsafe_allow_html=True)
 
 def display_image_step():
     """Display the haiku image generation step"""

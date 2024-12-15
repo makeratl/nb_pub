@@ -252,21 +252,26 @@ def main():
             
             # Pagination controls
             col1, col2, col3 = st.columns([1, 2, 1])
-            with col1:
-                if st.button("←", disabled=st.session_state.headline_page <= 1):
-                    st.session_state.headline_page -= 1
-                    st.rerun()
-            with col2:
+
+            col1.write("")
+            if col1.button("←", use_container_width=True, disabled=st.session_state.headline_page <= 1):
+                st.session_state.headline_page -= 1
+                st.rerun()
+
+            # Create a container for the page number
+            with col2.container():
+                st.write("")
                 st.markdown(
                     f'<div style="text-align: center; color: rgba(255,255,255,0.8);">'
                     f'Page {st.session_state.headline_page} of {total_pages}'
                     f'</div>',
                     unsafe_allow_html=True
                 )
-            with col3:
-                if st.button("→", disabled=st.session_state.headline_page >= total_pages):
-                    st.session_state.headline_page += 1
-                    st.rerun()
+
+            col3.write("")
+            if col3.button("→", use_container_width=True, disabled=st.session_state.headline_page >= total_pages):
+                st.session_state.headline_page += 1
+                st.rerun()
 
     # Main content area
     col1, col2 = st.columns([0.8, 3])
