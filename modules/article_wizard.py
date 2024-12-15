@@ -889,7 +889,7 @@ def display_image_step():
                 # Save updated publish data to file
                 with open('publish.json', 'w') as f:
                     json.dump(st.session_state.publish_data, f, indent=2)
-                st.success("New image generated successfully!")
+                # st.success("New image generated successfully!")
             else:
                 st.error("Failed to generate new image")
     
@@ -988,6 +988,24 @@ def display_image_step():
         <div class="action-buttons">
     """
     st.markdown(header_html, unsafe_allow_html=True)
+    
+    # Custom CSS for button styling
+    st.markdown("""
+        <style>
+            div.stButton > button {
+                width: 100%;
+                padding: 0.5rem;
+                border-radius: 0.25rem;
+                background-color: #4A6FA5;
+                color: white;
+                font-weight: bold;
+                margin-bottom: 0.5rem;
+            }
+            div.stButton > button:hover {
+                background-color: #3E5E8E;
+            }
+        </style>
+    """, unsafe_allow_html=True)
     
     # Create columns for buttons
     cols = st.columns(len(buttons))

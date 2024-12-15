@@ -42,7 +42,7 @@ def generate_image(prompt):
         "seed": -1
     }
 
-    st.info("Generating image...")
+    # st.info("Generating image...")
     progress_bar = st.progress(0)
     start_time = time.time()
 
@@ -155,9 +155,9 @@ def add_text_to_image(image_path, haiku, ai_headline, article_date, font_path, i
         return output_path
 
 def generate_haiku_background(haiku, ai_headline, article_date):
-    st.info("Consulting with Illustration...")
+    # st.info("Consulting with Illustration...")
     image_prompt = generate_image_prompt(haiku)
-    st.info(f"Illustration Prompt: {image_prompt}")
+    #st.info(f"Illustration Prompt: {image_prompt}")
     
     image_path, prompt = generate_image(image_prompt)
     
@@ -168,7 +168,7 @@ def generate_haiku_background(haiku, ai_headline, article_date):
             st.warning(f"Font file not found at {font_path}. Using default font.")
             font_path = None  # This will use a default font
 
-        st.info("Adding text to the generated image...")
+        # st.info("Adding text to the generated image...")
         final_image = add_text_to_image(image_path, haiku, ai_headline, article_date, font_path, initial_font_size=40)
         return final_image, prompt
     
