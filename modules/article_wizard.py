@@ -14,17 +14,17 @@ def create_step_header(headline, buttons):
     st.markdown(f"""
         <style>
             .step-header {{
-                margin-bottom: 2rem;
-                padding: 1rem;
+                margin-bottom: 1rem;
+                padding: 0.5rem;
                 background: rgba(74, 111, 165, 0.05);
                 border-radius: 8px;
                 border: 1px solid rgba(74, 111, 165, 0.1);
             }}
             .headline-text {{
                 color: rgba(255, 255, 255, 0.95);
-                font-size: 1.2em;
+                font-size: 1.1em;
                 font-weight: 500;
-                margin-bottom: 1rem;
+                margin-bottom: 0.5rem;
             }}
             .action-buttons {{
                 display: flex;
@@ -609,19 +609,19 @@ def display_review_step():
     def next_page():
         st.session_state.headline_page += 1
     
-    # Display pagination using Streamlit components
-    col1, col2, col3 = st.columns(3)
+    # # Display pagination using Streamlit components
+    # col1, col2, col3 = st.columns(3)
     
-    with col1:
-        if st.button("← Prev"):
-            prev_page()
+    # with col1:
+    #     if st.button("← Prev"):
+    #         prev_page()
     
-    with col2:
-        st.write(f"Page {st.session_state.headline_page}", unsafe_allow_html=True)
+    # with col2:
+    #     st.write(f"Page {st.session_state.headline_page}", unsafe_allow_html=True)
     
-    with col3:
-        if st.button("Next →"):
-            next_page()
+    # with col3:
+    #     if st.button("Next →"):
+    #         next_page()
     
     # Custom CSS for pagination styling
     st.markdown("""
