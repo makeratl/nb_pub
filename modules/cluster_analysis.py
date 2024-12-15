@@ -4,8 +4,26 @@ from chat_codegpt import chat_with_codegpt
 
 def analyze_cluster(cluster):
     """Analyze a single cluster using CodeGPT"""
-    titles = [article['title'] for article in cluster.get('articles', [])]
-    sources = [article.get('name_source', 'Unknown') for article in cluster.get('articles', [])]
+    articles = cluster.get('articles', [])
+    
+    # Filter for unique titles and sources
+    seen_titles = set()
+    seen_sources = set()
+    filtered_articles = []
+    for article in articles:
+        title = article['title']
+        source = article.get('name_source', 'Unknown')
+        if title not in seen_titles and source not in seen_sources:
+            filtered_articles.append(article)
+            seen_titles.add(title)
+            seen_sources.add(source)
+    
+    # Check if cluster has enough unique articles
+    if len(filtered_articles) < 3:
+        return None
+    
+    titles = [article['title'] for article in filtered_articles]
+    sources = [article.get('name_source', 'Unknown') for article in filtered_articles]
     
     prompt = f"""Analyze these news headlines and their sources:
     Headlines: {json.dumps(titles, indent=2)}
@@ -20,20 +38,33 @@ def analyze_cluster(cluster):
         result = json.loads(analysis)
         # Ensure bias is a float
         result['bias'] = float(result.get('bias', 0))
+        result['article_count'] = len(filtered_articles)
+        result['articles'] = filtered_articles
         return result
     except:
-        return {"category": "Unknown", "subject": "Unknown", "bias": 0.0}
+        return None
 
 def create_article(cluster):
     """Generate article from cluster using CodeGPT"""
     articles_data = []
-    for article in cluster['articles'][:8]:  # Limit to 8 articles
-        articles_data.append({
-            "title": article.get('title', ''),
-            "content": article.get('content', ''),
-            "name_source": article.get('name_source', ''),
-            "link": article.get('link', '')
-        })
+    seen_titles = set()
+    seen_sources = set()
+    
+    for article in cluster['articles']:
+        title = article['title'] 
+        source = article.get('name_source', 'Unknown')
+        if title not in seen_titles and source not in seen_sources:
+            articles_data.append({
+                "title": title,
+                "content": article.get('content', ''),
+                "name_source": source,
+                "link": article.get('link', '')
+            })
+            seen_titles.add(title)
+            seen_sources.add(source)
+            
+            if len(articles_data) >= 8:
+                break
 
     prompt = f"""Create an article based on these sources. Include a headline, haiku, full story, and a one-paragraph summary.
     The story should be in HTML format.

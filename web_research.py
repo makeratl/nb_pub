@@ -58,6 +58,9 @@ def main():
     st.set_page_config(layout="wide", page_title="AI News Brew Research")
     
     # Initialize session state
+    if 'article_rejected' not in st.session_state:
+        st.session_state.article_rejected = False
+    
     init_session_state()
     
     # Add global styles

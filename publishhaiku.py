@@ -101,7 +101,7 @@ def publish_article(json_file_path, api_key):
                 print("Failed to parse JSON response")
         else:
             print(f"HTTP Error: {res.status}")
-            print(f"Error content: {data.decode('utf-8')}")
+            print(f"Error content (publishhaiku.py): {data.decode('utf-8')}")
 
     except Exception as e:
         print(f"An error occurred: {str(e)}")

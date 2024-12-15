@@ -1,3 +1,4 @@
+import streamlit as st
 import time
 import os
 from chat_codegpt import chat_with_codegpt
@@ -41,13 +42,17 @@ def generate_image(prompt):
         "seed": -1
     }
 
-    print("Generating image...")
+    st.info("Generating image...")
+    progress_bar = st.progress(0)
     start_time = time.time()
 
     response = requests.post(f"{base_url}/API/GenerateText2Image", json=payload, headers=headers)
 
     while response.status_code == 202:
-        print(f"Image generation in progress... Time elapsed: {time.time() - start_time:.2f} seconds", end="\r")
+        elapsed_time = time.time() - start_time
+        progress = min(elapsed_time / 60, 1.0)  # Assume max generation time of 60 seconds
+        progress_bar.progress(progress)
+        st.info(f"Image generation in progress... Time elapsed: {elapsed_time:.2f} seconds")
         time.sleep(1)
         response = requests.get(f"{base_url}/API/CheckGenerationProgress", headers=headers, params={"session_id": session_id})
 
@@ -60,9 +65,9 @@ def generate_image(prompt):
                 filename = "haikubg.png"
                 with open(filename, "wb") as file:
                     file.write(image_response.content)
-                return f"Image generated and saved as '{filename}'", prompt
+                return filename, prompt
     
-    return "Failed to generate image.", prompt
+    return None, prompt
 
 def add_text_to_image(image_path, haiku, ai_headline, article_date, font_path, initial_font_size=40, text_color=(255, 255, 255, 255)):
     with Image.open(image_path) as img:
@@ -79,8 +84,6 @@ def add_text_to_image(image_path, haiku, ai_headline, article_date, font_path, i
             if all(draw.textlength(line, font=font) <= max_width for line in lines):
                 break
             font_size -= 1
-        
-        # print(f"Selected font size: {font_size}")
         
         font = ImageFont.truetype(font_path, font_size)
         
@@ -152,31 +155,22 @@ def add_text_to_image(image_path, haiku, ai_headline, article_date, font_path, i
         return output_path
 
 def generate_haiku_background(haiku, ai_headline, article_date):
-    # print(f"Received haiku:\n{haiku}\n")
-    print("Generating image prompt based on the haiku...")
+    st.info("Consulting with Illustration...")
     image_prompt = generate_image_prompt(haiku)
-    print(f"Image prompt (haikubackground.py): {image_prompt}")
-    # print(f"\nGenerated image prompt:\n{image_prompt}\n")
-    result, prompt = generate_image(image_prompt)
-    # print(result)
-
-    if "Image generated and saved as" in result:
+    st.info(f"Illustration Prompt: {image_prompt}")
+    
+    image_path, prompt = generate_image(image_prompt)
+    
+    if image_path:
         font_path = os.path.join(os.path.dirname(__file__), "fonts", "NotoSerif-BoldItalic.ttf")
         
         if not os.path.exists(font_path):
-            print(f"Warning: Font file not found at {font_path}. Using default font.")
+            st.warning(f"Font file not found at {font_path}. Using default font.")
             font_path = None  # This will use a default font
 
-        # Add text to the image with enhanced visibility
-        final_image = add_text_to_image("haikubg.png", haiku, ai_headline, article_date, font_path, initial_font_size=40)
-        print(f"Haiku text added to image. Final image saved as '{final_image}'")
-        return final_image, prompt.strip('"')
+        st.info("Adding text to the generated image...")
+        final_image = add_text_to_image(image_path, haiku, ai_headline, article_date, font_path, initial_font_size=40)
+        st.info(f"Haiku text added to image. Final image saved as '{final_image}'")
+        return final_image, prompt
     
-    return None, prompt.strip('"')
-
-if __name__ == "__main__":
-    # This block is for testing purposes only
-    test_haiku = "Autumn moonlight—\na worm digs silently\ninto the chestnut."
-    test_ai_headline = "Test Headline"
-    test_article_date = "2022-01-01"
-    generate_haiku_background(test_haiku, test_ai_headline, test_article_date)
+    return None, prompt

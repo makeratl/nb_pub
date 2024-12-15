@@ -2,10 +2,12 @@
 import streamlit as st
 from .display import get_bias_color
 from review_articles import evaluate_article_with_ai
-from publish_utils import generate_and_encode_images, publish_article
+from publish_utils import publish_article, generate_and_encode_images
 from .utils import reset_article_state
+from .haiku_image_generator import generate_haiku_background
 import json
 import os
+import base64
 
 def create_step_header(headline, buttons):
     """Create consistent header with headline and action buttons"""
@@ -642,21 +644,31 @@ def display_image_step():
     
     def regenerate_image():
         with st.spinner("Generating new image..."):
-            image_data, image_haiku = generate_and_encode_images(
+            image_path, image_prompt = generate_haiku_background(
                 st.session_state.publish_data.get('AIHaiku', ''),
-                st.session_state.publish_data.get('AIHeadline', '')
+                st.session_state.publish_data.get('AIHeadline', ''),
+                st.session_state.publish_data.get('article_date', '')  # Pass article date
             )
-            if image_data and image_haiku:
-                # Update both session state and publish data
-                st.session_state.haiku_image = image_haiku
+            if image_path:
+                # Update session state with image path for display
+                st.session_state.haiku_image_path = image_path
+                
+                # Update publish data with encoded images for database
+                encoded_image, encoded_image_with_text, _ = generate_and_encode_images(
+                    st.session_state.publish_data.get('AIHaiku', ''),
+                    st.session_state.publish_data.get('AIHeadline', ''),
+                    st.session_state.publish_data.get('article_date', '')
+                )
                 st.session_state.publish_data.update({
-                    'image_data': image_data,
-                    'image_haiku': image_haiku
+                    'image_data': encoded_image,
+                    'image_haiku': encoded_image_with_text,
+                    'image_prompt': image_prompt
                 })
+                
                 # Save updated publish data to file
                 with open('publish.json', 'w') as f:
                     json.dump(st.session_state.publish_data, f, indent=2)
-                st.rerun()
+                st.success("New image generated successfully!")
             else:
                 st.error("Failed to generate new image")
     
@@ -678,22 +690,39 @@ def display_image_step():
     
     # Main content
     st.markdown("#### Haiku Visualization")
-    if st.session_state.haiku_image is None:
+    
+    # Always regenerate image when a new article is in creation
+    if 'haiku_image_path' not in st.session_state or st.session_state.article_rejected:
         with st.spinner("Generating initial haiku image..."):
-            image_data, image_haiku = generate_and_encode_images(
+            image_path, image_prompt = generate_haiku_background(
                 st.session_state.publish_data.get('AIHaiku', ''),
-                st.session_state.publish_data.get('AIHeadline', '')
+                st.session_state.publish_data.get('AIHeadline', ''),
+                st.session_state.publish_data.get('article_date', '')  # Pass article date
             )
-            if image_data and image_haiku:
-                st.session_state.haiku_image = image_haiku
+            if image_path:
+                # Update session state with image path for display
+                st.session_state.haiku_image_path = image_path
+                
+                # Update publish data with encoded images for database
+                encoded_image, encoded_image_with_text, _ = generate_and_encode_images(
+                    st.session_state.publish_data.get('AIHaiku', ''),
+                    st.session_state.publish_data.get('AIHeadline', ''),
+                    st.session_state.publish_data.get('article_date', '')
+                )
                 st.session_state.publish_data.update({
-                    'image_data': image_data,
-                    'image_haiku': image_haiku
+                    'image_data': encoded_image,
+                    'image_haiku': encoded_image_with_text,
+                    'image_prompt': image_prompt
                 })
-                st.rerun()
+                st.success("Initial haiku image generated successfully!")
             else:
-                st.error("Failed to generate haiku image")
-    else:
+                st.error("Failed to generate initial haiku image")
+    
+    # Display image prompt
+    st.info(f"Image Prompt: {st.session_state.publish_data.get('image_prompt', '')}")
+    
+    # Check if haiku_image_path exists in session state before displaying
+    if st.session_state.haiku_image_path:
         container_style = """
             <style>
                 [data-testid="stImage"] {
@@ -707,7 +736,9 @@ def display_image_step():
             </style>
         """
         st.markdown(container_style, unsafe_allow_html=True)
-        st.image(st.session_state.haiku_image, caption="Generated Haiku Image", use_container_width=False)
+        st.image(st.session_state.haiku_image_path, caption="Generated Haiku Image", use_container_width=False)
+    else:
+        st.warning("No haiku image available. Please try regenerating the image.")
 
 def display_final_review():
     """Display final review before publication"""
@@ -751,7 +782,7 @@ def display_final_review():
             st.markdown(f"**Topic:** {st.session_state.publish_data.get('topic', 'No topic')}")
             
             # Display haiku image with styling
-            if st.session_state.haiku_image is not None:
+            if st.session_state.haiku_image_path:
                 st.markdown("""
                     <style>
                         [data-testid="stImage"] {
@@ -765,7 +796,7 @@ def display_final_review():
                         }
                     </style>
                 """, unsafe_allow_html=True)
-                st.image(st.session_state.haiku_image, caption="Haiku Visualization")
+                st.image(st.session_state.haiku_image_path, caption="Haiku Visualization")
             else:
                 st.warning("No haiku image available")
             

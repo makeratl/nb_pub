@@ -2,7 +2,7 @@ import http.client
 import json
 import base64
 import traceback
-from haikubackground import generate_haiku_background
+from modules.haiku_image_generator import generate_haiku_background
 from colorama import Fore, Style
 
 def encode_image(image_path):
@@ -11,21 +11,23 @@ def encode_image(image_path):
         encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
         return f"data:image/png;base64,{encoded_string}"
 
-def generate_and_encode_images(haiku, headline, date=''):
-    """Generate and encode haiku background images"""
+def generate_and_encode_images(haiku, headline, article_date):
     try:
-        print("\nGenerating haiku background...")
-        result = generate_haiku_background(haiku, headline, date)
-        print(f"Haiku background generation result: {result}")
-        
-        # Encode both images
-        image_data = encode_image("haikubg.png")
-        image_haiku = encode_image("haikubg_with_text.png")
-        
-        return image_data, image_haiku
+        image_path, image_prompt = generate_haiku_background(haiku, headline, article_date)
+        if image_path:
+            with open(image_path, "rb") as image_file:
+                encoded_image = base64.b64encode(image_file.read()).decode('utf-8')
+            
+            # Encode the image with text as well
+            with open("haikubg_with_text.png", "rb") as image_file:
+                encoded_image_with_text = base64.b64encode(image_file.read()).decode('utf-8')
+            
+            return encoded_image, encoded_image_with_text, image_prompt
+        else:
+            return None, None, None
     except Exception as e:
-        print(f"{Fore.RED}Error generating/encoding images: {str(e)}{Style.RESET_ALL}")
-        return None, None
+        print(f"Error generating haiku image: {str(e)}")
+        return None, None, None
 
 def publish_article(publish_data, api_key):
     """Send article data to publishing API"""
