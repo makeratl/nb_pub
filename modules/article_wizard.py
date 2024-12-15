@@ -51,6 +51,10 @@ def create_step_header(headline, buttons):
 def display_article_step():
     """Display the generated article content"""
     headline = st.session_state.article_data.get('headline', '')
+    category = st.session_state.selected_cluster.get('category', 'Unknown')
+    quality_score = 0.0  # Placeholder value
+    bias_text = 'Neutral'  # Placeholder value
+    trend_score = 0.0  # Placeholder value
     
     def continue_to_audit():
         with st.spinner("Running AI audit..."):
@@ -64,7 +68,100 @@ def display_article_step():
         ("Continue to Audit", "continue_review", continue_to_audit)
     ]
     
-    create_step_header(headline, buttons)
+    # Define color mapping functions
+    def get_quality_color(score):
+        if score <= 3:
+            return "#ff0000"  # Red
+        elif score <= 6:
+            return "#ffff00"  # Yellow
+        else:
+            return "#00ff00"  # Green
+    
+    def get_propagation_color(score):
+        if score <= 3:
+            return "#ff0000"  # Red
+        elif score <= 6:
+            return "#ffff00"  # Yellow
+        else:
+            return "#00ff00"  # Green
+    
+    # Define bias mapping
+    bias_mapping = {
+        'Far Left': -1.0,
+        'Left': -0.6,
+        'Center Left': -0.3,
+        'Neutral': 0.0,
+        'Center Right': 0.3,
+        'Right': 0.6,
+        'Far Right': 1.0
+    }
+    
+    # Get color codes for scores
+    quality_color = get_quality_color(quality_score)
+    bias_color = get_bias_color(bias_mapping.get(bias_text, 0.0))
+    propagation_color = get_propagation_color(trend_score)
+    
+    header_html = f"""
+        <style>
+            .step-header {{
+                margin-bottom: 1rem;
+            }}
+            .headline-text {{
+                font-size: 1.5rem;
+                font-weight: bold;
+                margin-bottom: 0.5rem;
+            }}
+            .subheader-text {{
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 1rem;
+            }}
+            .category {{
+                color: rgba(192, 160, 128, 0.95);
+                font-size: 1rem;
+            }}
+            .scores {{
+                display: flex;
+                gap: 1rem;
+                align-items: center;
+            }}
+            .score {{
+                font-weight: bold;
+            }}
+            .quality-score {{
+                color: {quality_color};
+            }}
+            .bias-score {{
+                color: {bias_color};
+            }}
+            .propagation-score {{
+                color: {propagation_color};
+            }}
+        </style>
+        <div class="step-header">
+            <div class="headline-text">{headline}</div>
+            <div class="subheader-text">
+                <span class="category">{category}</span>
+                <div class="scores">
+                    <span class="score quality-score">Quality: {quality_score:.1f}/10</span>
+                    <span class="score bias-score">Bias: {bias_text}</span>
+                    <span class="score propagation-score">Propagation: {trend_score:.1f}/10</span>
+                </div>
+            </div>
+        </div>
+        <div class="action-buttons">
+    """
+    st.markdown(header_html, unsafe_allow_html=True)
+    
+    # Create columns for buttons
+    cols = st.columns(len(buttons))
+    for col, (label, key, callback) in zip(cols, buttons):
+        with col:
+            if st.button(label, key=key):
+                callback()
+    
+    st.markdown("</div></div>", unsafe_allow_html=True)
     
     # Group sources by domain/publisher
     source_groups = {}
@@ -227,6 +324,10 @@ def review_article(article_data):
 def display_review_step():
     """Display the AI review results and article content"""
     headline = st.session_state.article_data.get('headline', '')
+    category = st.session_state.evaluation.get('cat', 'Unknown')
+    quality_score = st.session_state.evaluation.get('quality_score', 0)
+    bias_text = st.session_state.evaluation.get('bs_p', 'Neutral')
+    trend_score = st.session_state.evaluation.get('trend', 0.0)
     
     def continue_to_image():
         # Format citations
@@ -264,6 +365,31 @@ def display_review_step():
         }
         
         st.session_state.current_step = 3
+        
+        # Trigger image generation when entering step 3
+        with st.spinner("Generating initial haiku image..."):
+            image_path, image_prompt = generate_haiku_background(
+                st.session_state.publish_data.get('AIHaiku', ''),
+                st.session_state.publish_data.get('AIHeadline', ''),
+                st.session_state.publish_data.get('article_date', '')
+            )
+            if image_path:
+                st.session_state.haiku_image_path = image_path
+                st.session_state.publish_data['image_prompt'] = image_prompt
+                st.success("Initial haiku image generated successfully!")
+                
+                encoded_image, encoded_image_with_text = generate_and_encode_images(
+                    image_path,
+                    "haikubg_with_text.png"
+                )
+                st.session_state.publish_data.update({
+                    'image_data': encoded_image,
+                    'image_haiku': encoded_image_with_text
+                })
+                st.session_state.initial_image_generated = True
+            else:
+                st.error("Failed to generate initial haiku image")
+        
         st.rerun()
     
     def reject_article():
@@ -276,7 +402,101 @@ def display_review_step():
         ("Reject Article", "review_reject", reject_article)
     ]
     
-    create_step_header(headline, buttons)
+    # Define color mapping functions
+    def get_quality_color(score):
+        if score <= 3:
+            return "#ff0000"  # Red
+        elif score <= 6:
+            return "#ffff00"  # Yellow
+        else:
+            return "#00ff00"  # Green
+    
+    def get_propagation_color(score):
+        if score <= 3:
+            return "#ff0000"  # Red
+        elif score <= 6:
+            return "#ffff00"  # Yellow
+        else:
+            return "#00ff00"  # Green
+    
+    # Get color codes for scores
+    quality_color = get_quality_color(quality_score)
+    
+    # Define bias mapping here
+    bias_mapping = {
+        'Far Left': -1.0,
+        'Left': -0.6,
+        'Center Left': -0.3,
+        'Neutral': 0.0,
+        'Center Right': 0.3,
+        'Right': 0.6,
+        'Far Right': 1.0
+    }
+    
+    bias_color = get_bias_color(bias_mapping.get(bias_text, 0.0))
+    propagation_color = get_propagation_color(trend_score)
+    
+    header_html = f"""
+        <style>
+            .step-header {{
+                margin-bottom: 1rem;
+            }}
+            .headline-text {{
+                font-size: 1.5rem;
+                font-weight: bold;
+                margin-bottom: 0.5rem;
+            }}
+            .subheader-text {{
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 1rem;
+            }}
+            .category {{
+                color: rgba(192, 160, 128, 0.95);
+                font-size: 1rem;
+            }}
+            .scores {{
+                display: flex;
+                gap: 1rem;
+                align-items: center;
+            }}
+            .score {{
+                font-weight: bold;
+            }}
+            .quality-score {{
+                color: {quality_color};
+            }}
+            .bias-score {{
+                color: {bias_color};
+            }}
+            .propagation-score {{
+                color: {propagation_color};
+            }}
+        </style>
+        <div class="step-header">
+            <div class="headline-text">{headline}</div>
+            <div class="subheader-text">
+                <span class="category">{category}</span>
+                <div class="scores">
+                    <span class="score quality-score">Quality: {quality_score:.1f}/10</span>
+                    <span class="score bias-score">Bias: {bias_text}</span>
+                    <span class="score propagation-score">Propagation: {trend_score:.1f}/10</span>
+                </div>
+            </div>
+        </div>
+        <div class="action-buttons">
+    """
+    st.markdown(header_html, unsafe_allow_html=True)
+    
+    # Create columns for buttons
+    cols = st.columns(len(buttons))
+    for col, (label, key, callback) in zip(cols, buttons):
+        with col:
+            if st.button(label, key=key):
+                callback()
+    
+    st.markdown("</div></div>", unsafe_allow_html=True)
     
     eval_data = st.session_state.evaluation
     
@@ -641,6 +861,10 @@ def display_review_step():
 def display_image_step():
     """Display the haiku image generation step"""
     headline = st.session_state.publish_data.get('AIHeadline', '')
+    category = st.session_state.publish_data.get('cat', 'Unknown')
+    quality_score = st.session_state.publish_data.get('qas', 0)
+    bias_text = st.session_state.publish_data.get('bs_p', 'Neutral')
+    trend_score = st.session_state.publish_data.get('trend', 0.0)
     
     def regenerate_image():
         with st.spinner("Generating new image..."):
@@ -650,19 +874,20 @@ def display_image_step():
                 st.session_state.publish_data.get('article_date', '')  # Pass article date
             )
             if image_path:
-                # Update session state with image path for display
+                # Update session state with new image path
                 st.session_state.haiku_image_path = image_path
                 
-                # Update publish data with encoded images for database
-                encoded_image, encoded_image_with_text, _ = generate_and_encode_images(
-                    st.session_state.publish_data.get('AIHaiku', ''),
-                    st.session_state.publish_data.get('AIHeadline', ''),
-                    st.session_state.publish_data.get('article_date', '')
+                # Update publish data with new image prompt
+                st.session_state.publish_data['image_prompt'] = image_prompt
+                
+                # Generate and store encoded images for publishing
+                encoded_image, encoded_image_with_text = generate_and_encode_images(
+                    image_path,
+                    "haikubg_with_text.png"  # Assuming this is the file path of the image with text
                 )
                 st.session_state.publish_data.update({
                     'image_data': encoded_image,
-                    'image_haiku': encoded_image_with_text,
-                    'image_prompt': image_prompt
+                    'image_haiku': encoded_image_with_text
                 })
                 
                 # Save updated publish data to file
@@ -681,7 +906,100 @@ def display_image_step():
         ("Continue to Final Review", "image_continue_review", continue_to_final)
     ]
     
-    create_step_header(headline, buttons)
+    # Define color mapping functions
+    def get_quality_color(score):
+        if score <= 3:
+            return "#ff0000"  # Red
+        elif score <= 6:
+            return "#ffff00"  # Yellow
+        else:
+            return "#00ff00"  # Green
+    
+    def get_propagation_color(score):
+        if score <= 3:
+            return "#ff0000"  # Red
+        elif score <= 6:
+            return "#ffff00"  # Yellow
+        else:
+            return "#00ff00"  # Green
+    
+    # Define bias mapping here
+    bias_mapping = {
+        'Far Left': -1.0,
+        'Left': -0.6,
+        'Center Left': -0.3,
+        'Neutral': 0.0,
+        'Center Right': 0.3,
+        'Right': 0.6,
+        'Far Right': 1.0
+    }
+    
+    # Get color codes for scores
+    quality_color = get_quality_color(quality_score)
+    bias_color = get_bias_color(bias_mapping.get(bias_text, 0.0))
+    propagation_color = get_propagation_color(trend_score)
+    
+    header_html = f"""
+        <style>
+            .step-header {{
+                margin-bottom: 1rem;
+            }}
+            .headline-text {{
+                font-size: 1.5rem;
+                font-weight: bold;
+                margin-bottom: 0.5rem;
+            }}
+            .subheader-text {{
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 1rem;
+            }}
+            .category {{
+                color: rgba(192, 160, 128, 0.95);
+                font-size: 1rem;
+            }}
+            .scores {{
+                display: flex;
+                gap: 1rem;
+                align-items: center;
+            }}
+            .score {{
+                font-weight: bold;
+            }}
+            .quality-score {{
+                color: {quality_color};
+            }}
+            .bias-score {{
+                color: {bias_color};
+            }}
+            .propagation-score {{
+                color: {propagation_color};
+            }}
+        </style>
+        <div class="step-header">
+            <div class="headline-text">{headline}</div>
+            <div class="subheader-text">
+                <span class="category">{category}</span>
+                <div class="scores">
+                    <span class="score quality-score">Quality: {quality_score:.1f}/10</span>
+                    <span class="score bias-score">Bias: {bias_text}</span>
+                    <span class="score propagation-score">Propagation: {trend_score:.1f}/10</span>
+                </div>
+            </div>
+        </div>
+        <div class="action-buttons">
+    """
+    st.markdown(header_html, unsafe_allow_html=True)
+    
+    # Create columns for buttons
+    cols = st.columns(len(buttons))
+    for col, (label, key, callback) in zip(cols, buttons):
+        with col:
+            if st.button(label, key=key):
+                callback()
+    
+    st.markdown("</div></div>", unsafe_allow_html=True)
     
     if not st.session_state.publish_data:
         st.error("No publication data available for image generation")
@@ -691,8 +1009,8 @@ def display_image_step():
     # Main content
     st.markdown("#### Haiku Visualization")
     
-    # Always regenerate image when a new article is in creation
-    if 'haiku_image_path' not in st.session_state or st.session_state.article_rejected:
+    # Generate initial image if not already generated
+    if 'initial_image_generated' not in st.session_state:
         with st.spinner("Generating initial haiku image..."):
             image_path, image_prompt = generate_haiku_background(
                 st.session_state.publish_data.get('AIHaiku', ''),
@@ -700,26 +1018,22 @@ def display_image_step():
                 st.session_state.publish_data.get('article_date', '')  # Pass article date
             )
             if image_path:
-                # Update session state with image path for display
                 st.session_state.haiku_image_path = image_path
+                st.session_state.publish_data['image_prompt'] = image_prompt
+                st.success("Initial haiku image generated successfully!")
                 
-                # Update publish data with encoded images for database
-                encoded_image, encoded_image_with_text, _ = generate_and_encode_images(
-                    st.session_state.publish_data.get('AIHaiku', ''),
-                    st.session_state.publish_data.get('AIHeadline', ''),
-                    st.session_state.publish_data.get('article_date', '')
+                # Generate and store encoded images for publishing
+                encoded_image, encoded_image_with_text = generate_and_encode_images(
+                    image_path,
+                    "haikubg_with_text.png"  # Assuming this is the file path of the image with text
                 )
                 st.session_state.publish_data.update({
                     'image_data': encoded_image,
-                    'image_haiku': encoded_image_with_text,
-                    'image_prompt': image_prompt
+                    'image_haiku': encoded_image_with_text
                 })
-                st.success("Initial haiku image generated successfully!")
+                st.session_state.initial_image_generated = True
             else:
                 st.error("Failed to generate initial haiku image")
-    
-    # Display image prompt
-    st.info(f"Image Prompt: {st.session_state.publish_data.get('image_prompt', '')}")
     
     # Check if haiku_image_path exists in session state before displaying
     if st.session_state.haiku_image_path:
@@ -737,8 +1051,15 @@ def display_image_step():
         """
         st.markdown(container_style, unsafe_allow_html=True)
         st.image(st.session_state.haiku_image_path, caption="Generated Haiku Image", use_container_width=False)
+        
+        with st.expander("Image Prompt", expanded=False):
+            st.info(st.session_state.publish_data.get('image_prompt', ''))
     else:
         st.warning("No haiku image available. Please try regenerating the image.")
+    
+    # Clear status after image generation
+    if st.session_state.haiku_image_path:
+        st.empty()
 
 def display_final_review():
     """Display final review before publication"""

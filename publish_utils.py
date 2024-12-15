@@ -4,6 +4,8 @@ import base64
 import traceback
 from modules.haiku_image_generator import generate_haiku_background
 from colorama import Fore, Style
+from PIL import Image
+from io import BytesIO
 
 def encode_image(image_path):
     """Encode an image file to base64"""
@@ -11,23 +13,23 @@ def encode_image(image_path):
         encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
         return f"data:image/png;base64,{encoded_string}"
 
-def generate_and_encode_images(haiku, headline, article_date):
-    try:
-        image_path, image_prompt = generate_haiku_background(haiku, headline, article_date)
-        if image_path:
-            with open(image_path, "rb") as image_file:
-                encoded_image = base64.b64encode(image_file.read()).decode('utf-8')
-            
-            # Encode the image with text as well
-            with open("haikubg_with_text.png", "rb") as image_file:
-                encoded_image_with_text = base64.b64encode(image_file.read()).decode('utf-8')
-            
-            return encoded_image, encoded_image_with_text, image_prompt
-        else:
-            return None, None, None
-    except Exception as e:
-        print(f"Error generating haiku image: {str(e)}")
-        return None, None, None
+def generate_and_encode_images(image_path, image_with_text_path):
+    # Load the generated image files
+    image = Image.open("haikubg.png")
+    image_with_text = Image.open("haikubg_with_text.png")
+    
+    # Encode the images
+    buffered = BytesIO()
+    image.save(buffered, format="PNG")
+    encoded_image = base64.b64encode(buffered.getvalue()).decode('utf-8')
+    encoded_image = f"data:image/png;base64,{encoded_image}"
+    
+    buffered_with_text = BytesIO()
+    image_with_text.save(buffered_with_text, format="PNG")
+    encoded_image_with_text = base64.b64encode(buffered_with_text.getvalue()).decode('utf-8')
+    encoded_image_with_text = f"data:image/png;base64,{encoded_image_with_text}"
+    
+    return encoded_image, encoded_image_with_text
 
 def publish_article(publish_data, api_key):
     """Send article data to publishing API"""

@@ -170,7 +170,6 @@ def generate_haiku_background(haiku, ai_headline, article_date):
 
         st.info("Adding text to the generated image...")
         final_image = add_text_to_image(image_path, haiku, ai_headline, article_date, font_path, initial_font_size=40)
-        st.info(f"Haiku text added to image. Final image saved as '{final_image}'")
         return final_image, prompt
     
     return None, prompt
