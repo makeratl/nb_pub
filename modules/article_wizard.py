@@ -244,6 +244,24 @@ def display_article_step():
         with st.expander("Source Articles", expanded=False):
             for article in st.session_state.selected_cluster['articles']:
                 st.markdown(f"- [{article['title']}]({article['link']}) - {article['name_source']}")
+    
+    # Custom CSS for button styling
+    st.markdown("""
+        <style>
+            div.stButton > button {
+                width: 100%;
+                padding: 0.5rem;
+                border-radius: 0.25rem;
+                background-color: #4A6FA5;
+                color: white;
+                font-weight: bold;
+                margin-bottom: 0.5rem;
+            }
+            div.stButton > button:hover {
+                background-color: #3E5E8E;
+            }
+        </style>
+    """, unsafe_allow_html=True)
 
 def review_article(article_data):
     """Review article using AI evaluation"""
@@ -853,6 +871,24 @@ def display_review_step():
             }
         </style>
     """, unsafe_allow_html=True)
+    
+    # Custom CSS for button styling
+    st.markdown("""
+        <style>
+            div.stButton > button {
+                width: 100%;
+                padding: 0.5rem;
+                border-radius: 0.25rem;
+                background-color: #4A6FA5;
+                color: white;
+                font-weight: bold;
+                margin-bottom: 0.5rem;
+            }
+            div.stButton > button:hover {
+                background-color: #3E5E8E;
+            }
+        </style>
+    """, unsafe_allow_html=True)
 
 def display_image_step():
     """Display the haiku image generation step"""
@@ -1004,6 +1040,17 @@ def display_image_step():
             div.stButton > button:hover {
                 background-color: #3E5E8E;
             }
+            .published-card {
+                background-color: #2c3e50;
+                padding: 1rem;
+                border-radius: 0.5rem;
+                margin-top: 1rem;
+                color: rgba(255, 255, 255, 0.8);
+            }
+            .rejected-text {
+                color: #e74c3c;
+                text-decoration: line-through;
+            }
         </style>
     """, unsafe_allow_html=True)
     
@@ -1074,106 +1121,52 @@ def display_final_review():
                 st.rerun()  # Rerun to update button state
     
     is_published = hasattr(st.session_state, 'publication_success') and st.session_state.publication_success
+    is_rejected = st.session_state.article_rejected
     
-    buttons = [
-        ("Publish Article", "final_review_publish", publish_article_action)
-    ]
-    
-    # Define color mapping functions
-    def get_quality_color(score):
-        if score <= 3:
-            return "#ff0000"  # Red
-        elif score <= 6:
-            return "#ffff00"  # Yellow
-        else:
-            return "#00ff00"  # Green
-    
-    def get_propagation_color(score):
-        if score <= 3:
-            return "#ff0000"  # Red
-        elif score <= 6:
-            return "#ffff00"  # Yellow
-        else:
-            return "#00ff00"  # Green
-    
-    # Define bias mapping
-    bias_mapping = {
-        'Far Left': -1.0,
-        'Left': -0.6,
-        'Center Left': -0.3,
-        'Neutral': 0.0,
-        'Center Right': 0.3,
-        'Right': 0.6,
-        'Far Right': 1.0
-    }
-    
-    # Get color codes for scores
-    quality_color = get_quality_color(quality_score)
-    bias_color = get_bias_color(bias_mapping.get(bias_text, 0.0))
-    propagation_color = get_propagation_color(trend_score)
-    
-    header_html = f"""
-        <style>
-            .step-header {{
-                margin-bottom: 1rem;
-            }}
-            .headline-text {{
-                font-size: 1.5rem;
-                font-weight: bold;
-                margin-bottom: 0.5rem;
-            }}
-            .subheader-text {{
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                gap: 1rem;
-            }}
-            .category {{
-                color: rgba(192, 160, 128, 0.8);
-                font-size: 1rem;
-            }}
-            .scores {{
-                display: flex;
-                gap: 1rem;
-                align-items: center;
-                color: rgba(255, 255, 255, 0.7);
-            }}
-            .score {{
-                font-weight: 500;
-            }}
-            .quality-score {{
-                color: rgba(0, 255, 0, 0.7);
-            }}
-            .bias-score {{
-                color: rgba(255, 255, 255, 0.7);
-            }}
-            .propagation-score {{
-                color: rgba(0, 255, 0, 0.7);
-            }}
-        </style>
-        <div class="step-header">
-            <div class="headline-text">{headline}</div>
-            <div class="subheader-text">
-                <span class="category">{category}</span>
-                <div class="scores">
-                    <span class="score quality-score">Quality: {quality_score:.1f}/10</span>
-                    <span class="score bias-score">Bias: {bias_text}</span>
-                    <span class="score propagation-score">Propagation: {trend_score:.1f}/10</span>
-                </div>
-            </div>
-        </div>
-        <div class="action-buttons">
-    """
-    st.markdown(header_html, unsafe_allow_html=True)
-    
-    # Create columns for buttons
-    cols = st.columns(len(buttons))
-    for col, (label, key, callback) in zip(cols, buttons):
-        with col:
-            if st.button(label, key=key):
-                callback()
-    
-    st.markdown("</div></div>", unsafe_allow_html=True)
+    if not is_published and not is_rejected:
+        # Custom CSS for button styling
+        st.markdown("""
+            <style>
+                div.stButton > button {
+                    width: 100%;
+                    padding: 0.5rem;
+                    border-radius: 0.25rem;
+                    background-color: #4A6FA5;
+                    color: white;
+                    font-weight: bold;
+                    margin-bottom: 0.5rem;
+                }
+                div.stButton > button:hover {
+                    background-color: #3E5E8E;
+                }
+                .published-card {
+                    background-color: #2c3e50;
+                    padding: 1rem;
+                    border-radius: 0.5rem;
+                    margin-top: 1rem;
+                    color: rgba(255, 255, 255, 0.8);
+                }
+                .rejected-text {
+                    color: #e74c3c;
+                    text-decoration: line-through;
+                }
+            </style>
+        """, unsafe_allow_html=True)
+        
+        # Create columns for buttons
+        cols = st.columns(2)
+        
+        with cols[0]:
+            if st.button("Publish Article", key="final_review_publish"):
+                publish_article_action()
+        
+        with cols[1]:
+            if st.button("Cancel Publication", key="final_review_cancel"):
+                reset_article_state()
+                st.session_state.article_rejected = True
+                st.rerun()
+        
+        st.markdown("</div></div>", unsafe_allow_html=True)
     
     if not st.session_state.publish_data:
         st.error("No publication data available")
@@ -1181,56 +1174,81 @@ def display_final_review():
         return
     
     try:
-        col1, col2 = st.columns([3, 2])
+        if st.session_state.article_rejected:
+            st.markdown("""
+                <div class="rejected-text">
+                    <h3>Headline: {}</h3>
+                    <p>{}</p>
+                </div>
+            """.format(
+                st.session_state.publish_data.get('AIHeadline', 'No headline'),
+                st.session_state.publish_data.get('AIStory', 'No content')
+            ), unsafe_allow_html=True)
         
-        with col1:
-            st.markdown("### Article Content")
-            st.markdown(f"**Headline:** {st.session_state.publish_data.get('AIHeadline', 'No headline')}")
-            st.markdown(f"**Category:** {st.session_state.publish_data.get('cat', 'No category')}")
-            st.markdown(f"**Topic:** {st.session_state.publish_data.get('topic', 'No topic')}")
-            
-            # Display haiku image with styling
-            if st.session_state.haiku_image_path:
-                st.markdown("""
-                    <style>
-                        [data-testid="stImage"] {
-                            width: 100%;
-                            margin: 1rem auto;
-                            display: block;
-                        }
-                        [data-testid="stImage"] img {
-                            border-radius: 8px;
-                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                        }
-                    </style>
-                """, unsafe_allow_html=True)
-                st.image(st.session_state.haiku_image_path, caption="Haiku Visualization")
-            else:
-                st.warning("No haiku image available")
-            
-            st.markdown("**Summary:**")
-            st.markdown(st.session_state.publish_data.get('AISummary', 'No summary'))
+        elif hasattr(st.session_state, 'publication_success') and st.session_state.publication_success:
+            st.markdown("""
+                <div class="published-card">
+                    <h3>Article Published Successfully!</h3>
+                    <p>ID: {}</p>
+                    <p>View at: <a href="{}" target="_blank">{}</a></p>
+                </div>
+            """.format(
+                st.session_state.published_article_id,
+                st.session_state.published_article_url,
+                st.session_state.published_article_url
+            ), unsafe_allow_html=True)
         
-        with col2:
-            st.markdown("### Publication Details")
-            try:
-                quality_score = float(st.session_state.publish_data.get('qas', 0))
-                st.metric("Quality Score", f"{quality_score:.1f}/10")
-            except (ValueError, TypeError):
-                st.metric("Quality Score", "N/A")
+        else:
+            col1, col2 = st.columns([3, 2])
             
-            st.metric("Bias Score", st.session_state.publish_data.get('bs_p', 'N/A'))
+            with col1:
+                st.markdown("### Article Content")
+                st.markdown(f"**Headline:** {st.session_state.publish_data.get('AIHeadline', 'No headline')}")
+                st.markdown(f"**Category:** {st.session_state.publish_data.get('cat', 'No category')}")
+                st.markdown(f"**Topic:** {st.session_state.publish_data.get('topic', 'No topic')}")
+                
+                # Display haiku image with styling
+                if st.session_state.haiku_image_path:
+                    st.markdown("""
+                        <style>
+                            [data-testid="stImage"] {
+                                width: 100%;
+                                margin: 1rem auto;
+                                display: block;
+                            }
+                            [data-testid="stImage"] img {
+                                border-radius: 8px;
+                                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                            }
+                        </style>
+                    """, unsafe_allow_html=True)
+                    st.image(st.session_state.haiku_image_path, caption="Haiku Visualization")
+                else:
+                    st.warning("No haiku image available")
+                
+                st.markdown("**Summary:**")
+                st.markdown(st.session_state.publish_data.get('AISummary', 'No summary'))
             
-            # Add Propagation Index metric
-            try:
-                trend_score = float(st.session_state.publish_data.get('trend', 0))
-                st.metric("Propagation Index", f"{trend_score:.1f}/10")
-            except (ValueError, TypeError):
-                st.metric("Propagation Index", "N/A")
-            
-            # Add expander for full article content
-            with st.expander("View Full Article", expanded=False):
-                st.markdown(st.session_state.publish_data.get('AIStory', 'No content'), unsafe_allow_html=True)
+            with col2:
+                st.markdown("### Publication Details")
+                try:
+                    quality_score = float(st.session_state.publish_data.get('qas', 0))
+                    st.metric("Quality Score", f"{quality_score:.1f}/10")
+                except (ValueError, TypeError):
+                    st.metric("Quality Score", "N/A")
+                
+                st.metric("Bias Score", st.session_state.publish_data.get('bs_p', 'N/A'))
+                
+                # Add Propagation Index metric
+                try:
+                    trend_score = float(st.session_state.publish_data.get('trend', 0))
+                    st.metric("Propagation Index", f"{trend_score:.1f}/10")
+                except (ValueError, TypeError):
+                    st.metric("Propagation Index", "N/A")
+                
+                # Add expander for full article content
+                with st.expander("View Full Article", expanded=False):
+                    st.markdown(st.session_state.publish_data.get('AIStory', 'No content'), unsafe_allow_html=True)
     
     except Exception as e:
         st.error(f"Error displaying final review: {str(e)}")
