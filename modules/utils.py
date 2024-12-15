@@ -50,3 +50,18 @@ def get_category_counts(headlines):
     )
     
     return sorted_categories
+
+def reset_article_state():
+    # Reset the article state variables
+    st.session_state.article_title = ""
+    st.session_state.article_text = ""
+    st.session_state.article_url = ""
+    st.session_state.article_image_url = ""
+    st.session_state.article_published_date = ""
+    st.session_state.article_source = ""
+    st.session_state.article_authors = []
+    st.session_state.article_keywords = []
+    st.session_state.article_summary = ""
+    st.session_state.article_language = ""
+    st.session_state.article_categories = []
+    # Add more article state variables as needed

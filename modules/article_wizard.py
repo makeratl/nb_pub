@@ -3,6 +3,7 @@ import streamlit as st
 from .display import get_bias_color
 from review_articles import evaluate_article_with_ai
 from publish_utils import generate_and_encode_images, publish_article
+from .utils import reset_article_state
 import json
 import os
 
@@ -264,8 +265,8 @@ def display_review_step():
         st.rerun()
     
     def reject_article():
-        st.session_state.article_rejected = True
         reset_article_state()
+        st.session_state.article_rejected = True
         st.rerun()
     
     buttons = [
