@@ -98,7 +98,7 @@ def evaluate_article_with_ai(article):
     Provide a detailed analysis covering:
     1. Quality Analysis: Evaluate based on the guidelines, focusing on source credibility and journalistic standards
     2. Bias Analysis: Assess political lean and perspective balance
-    3. Viral Potential: Rate shareability and public interest
+    3. Propagation Potential: Rate shareability and public interest
     
     Return a JSON object with:
     {{
@@ -107,7 +107,7 @@ def evaluate_article_with_ai(article):
         "cat": "category",
         "topic": "main topic",
         "trend": (0-10),
-        "reasoning": "Detailed analysis with Quality Analysis:, Bias Analysis:, and Viral Potential: sections"
+        "reasoning": "Detailed analysis with Quality Analysis:, Bias Analysis:, and Propagation Potential: sections"
     }}
     """
     

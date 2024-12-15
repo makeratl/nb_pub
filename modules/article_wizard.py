@@ -118,25 +118,26 @@ def display_article_step():
                 gap: 1rem;
             }}
             .category {{
-                color: rgba(192, 160, 128, 0.95);
+                color: rgba(192, 160, 128, 0.8);
                 font-size: 1rem;
             }}
             .scores {{
                 display: flex;
                 gap: 1rem;
                 align-items: center;
+                color: rgba(255, 255, 255, 0.7);
             }}
             .score {{
-                font-weight: bold;
+                font-weight: 500;
             }}
             .quality-score {{
-                color: {quality_color};
+                color: rgba(0, 255, 0, 0.7);
             }}
             .bias-score {{
-                color: {bias_color};
+                color: rgba(255, 255, 255, 0.7);
             }}
             .propagation-score {{
-                color: {propagation_color};
+                color: rgba(0, 255, 0, 0.7);
             }}
         </style>
         <div class="step-header">
@@ -292,7 +293,7 @@ def review_article(article_data):
        - Presentation of multiple viewpoints
        - Treatment of controversial topics
        
-    4. Viral Potential should consider:
+    4. Propagation Potential should consider:
        - Topic relevance and timeliness
        - Public interest factors
        - Clarity of presentation
@@ -453,25 +454,26 @@ def display_review_step():
                 gap: 1rem;
             }}
             .category {{
-                color: rgba(192, 160, 128, 0.95);
+                color: rgba(192, 160, 128, 0.8);
                 font-size: 1rem;
             }}
             .scores {{
                 display: flex;
                 gap: 1rem;
                 align-items: center;
+                color: rgba(255, 255, 255, 0.7);
             }}
             .score {{
-                font-weight: bold;
+                font-weight: 500;
             }}
             .quality-score {{
-                color: {quality_color};
+                color: rgba(0, 255, 0, 0.7);
             }}
             .bias-score {{
-                color: {bias_color};
+                color: rgba(255, 255, 255, 0.7);
             }}
             .propagation-score {{
-                color: {propagation_color};
+                color: rgba(0, 255, 0, 0.7);
             }}
         </style>
         <div class="step-header">
@@ -605,8 +607,8 @@ def display_review_step():
         
         with col1:
             # Create tabs for different analysis aspects
-            quality_tab, bias_tab, prop_tab = st.tabs([
-                 "Quality", "Bias", "Propagation"
+            quality_tab, bias_tab, prop_tab, reasoning_tab = st.tabs([
+                 "Quality", "Bias", "Propagation", "Raw Reasoning"
             ])
             
             with quality_tab:
@@ -663,7 +665,7 @@ def display_review_step():
                 if "Bias Analysis:" in reasoning:
                     sections = reasoning.split("Bias Analysis:")
                     if len(sections) > 1:
-                        bias_section = sections[1].split("Viral Potential:")[0].strip()
+                        bias_section = sections[1].split("Propagation Potential:")[0].strip()
                         bias_analysis = bias_section
                 
                 if not bias_analysis:
@@ -692,9 +694,9 @@ def display_review_step():
                 # Extract propagation-related content from reasoning
                 prop_analysis = ""
                 
-                # Look for the Viral Potential section
-                if "Viral Potential:" in reasoning:
-                    sections = reasoning.split("Viral Potential:")
+                # Look for the Propagation Potential section
+                if "Propagation Potential:" in reasoning:
+                    sections = reasoning.split("Propagation Potential:")
                     if len(sections) > 1:
                         prop_section = sections[1].strip()
                         prop_analysis = prop_section
@@ -712,6 +714,14 @@ def display_review_step():
                     ### Propagation Index: {trend_score:.1f}/10
                     
                     {prop_analysis}
+                """)
+            
+            with reasoning_tab:
+                reasoning = eval_data.get('reasoning', 'No analysis provided')
+                st.markdown(f"""
+                    ### Raw Reasoning
+                    
+                    {reasoning}
                 """)
         
         with col2:
@@ -832,20 +842,6 @@ def display_review_step():
     def next_page():
         st.session_state.headline_page += 1
     
-    # # Display pagination using Streamlit components
-    # col1, col2, col3 = st.columns(3)
-    
-    # with col1:
-    #     if st.button("← Prev"):
-    #         prev_page()
-    
-    # with col2:
-    #     st.write(f"Page {st.session_state.headline_page}", unsafe_allow_html=True)
-    
-    # with col3:
-    #     if st.button("Next →"):
-    #         next_page()
-    
     # Custom CSS for pagination styling
     st.markdown("""
         <style>
@@ -956,25 +952,26 @@ def display_image_step():
                 gap: 1rem;
             }}
             .category {{
-                color: rgba(192, 160, 128, 0.95);
+                color: rgba(192, 160, 128, 0.8);
                 font-size: 1rem;
             }}
             .scores {{
                 display: flex;
                 gap: 1rem;
                 align-items: center;
+                color: rgba(255, 255, 255, 0.7);
             }}
             .score {{
-                font-weight: bold;
+                font-weight: 500;
             }}
             .quality-score {{
-                color: {quality_color};
+                color: rgba(0, 255, 0, 0.7);
             }}
             .bias-score {{
-                color: {bias_color};
+                color: rgba(255, 255, 255, 0.7);
             }}
             .propagation-score {{
-                color: {propagation_color};
+                color: rgba(0, 255, 0, 0.7);
             }}
         </style>
         <div class="step-header">
@@ -1009,32 +1006,6 @@ def display_image_step():
     # Main content
     st.markdown("#### Haiku Visualization")
     
-    # Generate initial image if not already generated
-    if 'initial_image_generated' not in st.session_state:
-        with st.spinner("Generating initial haiku image..."):
-            image_path, image_prompt = generate_haiku_background(
-                st.session_state.publish_data.get('AIHaiku', ''),
-                st.session_state.publish_data.get('AIHeadline', ''),
-                st.session_state.publish_data.get('article_date', '')  # Pass article date
-            )
-            if image_path:
-                st.session_state.haiku_image_path = image_path
-                st.session_state.publish_data['image_prompt'] = image_prompt
-                st.success("Initial haiku image generated successfully!")
-                
-                # Generate and store encoded images for publishing
-                encoded_image, encoded_image_with_text = generate_and_encode_images(
-                    image_path,
-                    "haikubg_with_text.png"  # Assuming this is the file path of the image with text
-                )
-                st.session_state.publish_data.update({
-                    'image_data': encoded_image,
-                    'image_haiku': encoded_image_with_text
-                })
-                st.session_state.initial_image_generated = True
-            else:
-                st.error("Failed to generate initial haiku image")
-    
     # Check if haiku_image_path exists in session state before displaying
     if st.session_state.haiku_image_path:
         container_style = """
@@ -1064,6 +1035,10 @@ def display_image_step():
 def display_final_review():
     """Display final review before publication"""
     headline = st.session_state.publish_data.get('AIHeadline', '')
+    category = st.session_state.publish_data.get('cat', 'Unknown')
+    quality_score = st.session_state.publish_data.get('qas', 0)
+    bias_text = st.session_state.publish_data.get('bs_p', 'Neutral')
+    trend_score = st.session_state.publish_data.get('trend', 0.0)
     
     def publish_article_action():
         with st.spinner("Publishing article..."):
@@ -1086,7 +1061,101 @@ def display_final_review():
         ("Publish Article", "final_review_publish", publish_article_action)
     ]
     
-    create_step_header(headline, buttons)
+    # Define color mapping functions
+    def get_quality_color(score):
+        if score <= 3:
+            return "#ff0000"  # Red
+        elif score <= 6:
+            return "#ffff00"  # Yellow
+        else:
+            return "#00ff00"  # Green
+    
+    def get_propagation_color(score):
+        if score <= 3:
+            return "#ff0000"  # Red
+        elif score <= 6:
+            return "#ffff00"  # Yellow
+        else:
+            return "#00ff00"  # Green
+    
+    # Define bias mapping
+    bias_mapping = {
+        'Far Left': -1.0,
+        'Left': -0.6,
+        'Center Left': -0.3,
+        'Neutral': 0.0,
+        'Center Right': 0.3,
+        'Right': 0.6,
+        'Far Right': 1.0
+    }
+    
+    # Get color codes for scores
+    quality_color = get_quality_color(quality_score)
+    bias_color = get_bias_color(bias_mapping.get(bias_text, 0.0))
+    propagation_color = get_propagation_color(trend_score)
+    
+    header_html = f"""
+        <style>
+            .step-header {{
+                margin-bottom: 1rem;
+            }}
+            .headline-text {{
+                font-size: 1.5rem;
+                font-weight: bold;
+                margin-bottom: 0.5rem;
+            }}
+            .subheader-text {{
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 1rem;
+            }}
+            .category {{
+                color: rgba(192, 160, 128, 0.8);
+                font-size: 1rem;
+            }}
+            .scores {{
+                display: flex;
+                gap: 1rem;
+                align-items: center;
+                color: rgba(255, 255, 255, 0.7);
+            }}
+            .score {{
+                font-weight: 500;
+            }}
+            .quality-score {{
+                color: rgba(0, 255, 0, 0.7);
+            }}
+            .bias-score {{
+                color: rgba(255, 255, 255, 0.7);
+            }}
+            .propagation-score {{
+                color: rgba(0, 255, 0, 0.7);
+            }}
+        </style>
+        <div class="step-header">
+            <div class="headline-text">{headline}</div>
+            <div class="subheader-text">
+                <span class="category">{category}</span>
+                <div class="scores">
+                    <span class="score quality-score">Quality: {quality_score:.1f}/10</span>
+                    <span class="score bias-score">Bias: {bias_text}</span>
+                    <span class="score propagation-score">Propagation: {trend_score:.1f}/10</span>
+                </div>
+            </div>
+        </div>
+        <div class="action-buttons">
+    """
+    st.markdown(header_html, unsafe_allow_html=True)
+    
+    # Create columns for buttons
+    cols = st.columns(len(buttons))
+    for col, (label, key, callback) in zip(cols, buttons):
+        with col:
+            if st.button(label, key=key):
+                callback()
+    
+    st.markdown("</div></div>", unsafe_allow_html=True)
     
     if not st.session_state.publish_data:
         st.error("No publication data available")
