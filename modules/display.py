@@ -37,133 +37,43 @@ def get_bias_color(bias_value):
     except (ValueError, TypeError):
         return 'rgba(28, 28, 28, 0.95)'  # Default dark background for any errors
 
-def format_latest_headlines(headlines, selected_category=None, page=1, per_page=5, topic_filter=None):
-    """Format headlines with metadata for sidebar display with pagination"""
-    # Ensure page is valid
-    page = max(1, page)  # Ensure page is at least 1
+def format_latest_headlines(headlines, category_filter, page, topic_filter=None, items_per_page=5):
+    filtered_headlines = [
+        headline for headline in headlines
+        if (category_filter == "All Categories" or headline.get('cat', '') == category_filter)
+        and (topic_filter is None or topic_filter.lower() in headline.get('topic', '').lower())
+    ]
     
-    # First filter by category if selected
-    if selected_category and selected_category != "All Categories":
-        filtered_headlines = [h for h in headlines if h.get('cat', '').title() == selected_category]
-    else:
-        filtered_headlines = headlines
+    total_pages = math.ceil(len(filtered_headlines) / items_per_page)
+    start_index = (page - 1) * items_per_page
+    end_index = start_index + items_per_page
+    paginated_headlines = filtered_headlines[start_index:end_index]
     
-    # Apply topic keyword filtering if provided and not empty
-    if topic_filter and topic_filter.strip():
-        # Split the topic filter into terms
-        terms = []
-        current_term = []
-        in_quotes = False
-        
-        # Parse the topic filter string
-        for char in topic_filter:
-            if char == '"':
-                in_quotes = not in_quotes
-                if not in_quotes and current_term:
-                    terms.append(''.join(current_term))
-                    current_term = []
-            elif char == ' ' and not in_quotes:
-                if current_term:
-                    terms.append(''.join(current_term))
-                    current_term = []
-            else:
-                current_term.append(char)
-        
-        if current_term:
-            terms.append(''.join(current_term))
-        
-        # Filter headlines based on terms
-        for term in terms:
-            if term.startswith('"') and term.endswith('"'):
-                # Exact phrase match
-                phrase = term[1:-1].lower()
-                filtered_headlines = [
-                    h for h in filtered_headlines 
-                    if phrase in h.get('topic', '').lower() or phrase in h.get('AIHeadline', '').lower()
-                ]
-            else:
-                # Individual word match
-                filtered_headlines = [
-                    h for h in filtered_headlines 
-                    if term.lower() in h.get('topic', '').lower() or term.lower() in h.get('AIHeadline', '').lower()
-                ]
-    
-    # Paginate filtered headlines
-    total_pages = math.ceil(len(filtered_headlines) / per_page)
-    start_idx = (page - 1) * per_page
-    end_idx = start_idx + per_page
-    page_headlines = filtered_headlines[start_idx:end_idx]
-    
-    # Add styling
-    st.markdown("""
-        <style>
-            .headline-item {
-                padding: 0.8rem;
-                margin-bottom: 0.5rem;
-                border-radius: 4px;
-                transition: all 0.2s ease;
-                background-color: rgba(28, 28, 28, 0.95);
-                border: 3px solid;
-                border-radius: 4px;
-                position: relative;
-            }
-            .headline-text {
-                color: rgba(255, 255, 255, 0.95);
-                font-size: 1em;
-                line-height: 1.4;
-                margin-bottom: 0.5rem;
-                font-weight: 600;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                text-shadow: -1px -1px 0 rgba(0, 0, 0, 0.7), 1px -1px 0 rgba(0, 0, 0, 0.7), -1px 1px 0 rgba(0, 0, 0, 0.7), 1px 1px 0 rgba(0, 0, 0, 0.7);
-            }
-            .headline-metadata {
-                display: flex;
-                align-items: center;
-                gap: 0.5rem;
-                font-size: 0.8em;
-                color: rgba(255, 255, 255, 0.8);
-                line-height: 1.2;
-                text-shadow: -1px -1px 0 rgba(0, 0, 0, 0.7), 1px -1px 0 rgba(0, 0, 0, 0.7), -1px 1px 0 rgba(0, 0, 0, 0.7), 1px 1px 0 rgba(0, 0, 0, 0.7);
-            }
-            .headline-date {
-                margin-left: auto;
-                white-space: nowrap;
-            }
-            .headline-topic {
-                flex: 1;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
-        </style>
-    """, unsafe_allow_html=True)
-    
-    headlines_html = '<div class="headline-list">'
-    
-    for article in page_headlines:
-        try:
-            published_date = pd.to_datetime(article['Published']).strftime('%b %d \'%y')
-        except:
-            published_date = "Recent"
-            
-        bias = article.get('bs_p', 'Neutral')
-        bias_color = get_bias_color(bias)
-        category = article.get('cat', '').title()
-        topic = article.get('topic', '').title()
-        
+    headlines_html = ""
+    for headline in paginated_headlines:
+        bias_score = float(headline.get('bs_p', 0))  # Convert to float
+        bias_color = get_bias_color(bias_score)
         headlines_html += f"""
-            <div class="headline-item" style="border-color: {bias_color}">
-                <div class="headline-text">{article['AIHeadline']}</div>
-                <div class="headline-metadata">
-                    <span class="headline-category">{category}</span>
-                    <span class="headline-topic">{topic}</span>
-                    <span class="headline-date">{published_date}</span>
+            <div style="margin-bottom: 0.75rem; padding: 0.5rem; border: 2px solid {bias_color}; border-radius: 4px;">
+                <div style="font-size: 0.9em; color: rgba(255, 255, 255, 0.95); margin-bottom: 0.25rem;">
+                    {headline.get('AIHeadline', '')}
                 </div>
-            </div>"""
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-size: 0.8em; color: rgba(255, 255, 255, 0.7);">
+                        {headline.get('Published', '')}
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                        <div style="font-size: 0.8em; color: {bias_color}; margin-right: 0.5rem;">
+                            {bias_score:.2f}
+                        </div>
+                        <div style="font-size: 0.8em; color: rgba(192, 160, 128, 0.95);">
+                            {headline.get('cat', '')}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        """
     
-    headlines_html += '</div>'
     return headlines_html, total_pages
 
 def create_custom_progress_bar(bias_value, i):
