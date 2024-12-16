@@ -1147,8 +1147,17 @@ def display_final_review():
                     \nView at: [{st.session_state.published_article_url}]({st.session_state.published_article_url})""")
                 st.rerun()  # Rerun to update button state
     
+    # Check if the article has been published or rejected in the current session
     is_published = hasattr(st.session_state, 'publication_success') and st.session_state.publication_success
-    is_rejected = st.session_state.article_rejected
+    is_rejected = hasattr(st.session_state, 'article_rejected') and st.session_state.article_rejected
+    
+    # Reset the publication success and rejection flags for the current article
+    if 'current_article' not in st.session_state or st.session_state.current_article != st.session_state.publish_data.get('AIHeadline', ''):
+        st.session_state.current_article = st.session_state.publish_data.get('AIHeadline', '')
+        st.session_state.publication_success = False
+        st.session_state.article_rejected = False
+        is_published = False
+        is_rejected = False
     
     if not is_published and not is_rejected:
         # Custom CSS for button styling
