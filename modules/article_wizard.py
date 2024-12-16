@@ -419,9 +419,27 @@ def display_review_step():
         st.rerun()
     
     def reject_article():
-        reset_article_state()
         st.session_state.article_rejected = True
         st.rerun()
+    
+    # Check if the article has been rejected
+    if st.session_state.article_rejected:
+        st.markdown("""
+            <div class="rejected-card">
+                <h3 class="rejected-text">Article Rejected</h3>
+                <p>The article has been rejected and will not be published.</p>
+                <div style="margin-top: 1rem;">
+                    <strong>Headline:</strong>
+                    <p class="rejected-text">{}</p>
+                </div>
+            </div>
+        """.format(
+            st.session_state.article_data.get('headline', 'No headline')
+        ), unsafe_allow_html=True)
+        
+        # Reset article state after displaying the rejection message
+        reset_article_state()
+        return
     
     # Update the buttons to remove the "Provide Feedback" button
     buttons = [
@@ -1040,9 +1058,16 @@ def display_final_review():
                     margin-top: 1rem;
                     color: rgba(255, 255, 255, 0.8);
                 }
+                .rejected-card {
+                    background-color: #2c3e50;
+                    padding: 1rem;
+                    border-radius: 0.5rem;
+                    margin-top: 1rem;
+                    color: rgba(255, 255, 255, 0.8);
+                    border: 1px solid #e74c3c;
+                }
                 .rejected-text {
                     color: #e74c3c;
-                    text-decoration: line-through;
                 }
             </style>
         """, unsafe_allow_html=True)
@@ -1056,7 +1081,6 @@ def display_final_review():
         
         with cols[1]:
             if st.button("Cancel Publication", key="final_review_cancel"):
-                reset_article_state()
                 st.session_state.article_rejected = True
                 st.rerun()
         
@@ -1070,26 +1094,84 @@ def display_final_review():
     try:
         if st.session_state.article_rejected:
             st.markdown("""
-                <div class="rejected-text">
-                    <h3>Headline: {}</h3>
-                    <p>{}</p>
+                <div class="rejected-card">
+                    <h3 class="rejected-text">Article Rejected</h3>
+                    <p>The article has been rejected and will not be published.</p>
+                    <div style="margin-top: 1rem;">
+                        <strong>Headline:</strong>
+                        <p class="rejected-text">{}</p>
+                    </div>
                 </div>
             """.format(
-                st.session_state.publish_data.get('AIHeadline', 'No headline'),
-                st.session_state.publish_data.get('AIStory', 'No content')
+                st.session_state.publish_data.get('AIHeadline', 'No headline')
             ), unsafe_allow_html=True)
+            
+            # Reset article state after displaying the rejection message
+            reset_article_state()
         
         elif hasattr(st.session_state, 'publication_success') and st.session_state.publication_success:
             st.markdown("""
                 <div class="published-card">
-                    <h3>Article Published Successfully!</h3>
-                    <p>ID: {}</p>
-                    <p>View at: <a href="{}" target="_blank">{}</a></p>
+                    <div style="display: flex; align-items: center;">
+                        <div style="flex: 1;">
+                            <h3>Article Published Successfully!</h3>
+                            <p>Your article has been published to AI News Brew.</p>
+                            <div class="article-links">
+                                <div>
+                                    <strong>Article ID:</strong> 
+                                    <span class="article-id">{}</span>
+                                </div>
+                                <div>
+                                    <strong>View Article:</strong>
+                                    <a href="{}" target="_blank" class="article-url">{}</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="article-image">
+                            <img src="{}" alt="Article Haiku Image" style="width: 30vw; margin-left: 2rem;" />
+                        </div>
+                    </div>
                 </div>
+                <style>
+                    .published-card {{
+                        background-color: #1c2331;
+                        padding: 1.5rem;
+                        border-radius: 8px;
+                        margin-top: 1rem;
+                        color: rgba(255, 255, 255, 0.9);
+                        border: 1px solid #4A6FA5;
+                    }}
+                    .published-card h3 {{
+                        color: #4A6FA5;
+                        margin-bottom: 0.5rem;
+                    }}
+                    .article-image {{
+                        text-align: center;
+                    }}
+                    .article-image img {{
+                        max-width: 100%;
+                        border-radius: 4px;
+                    }}
+                    .article-links {{
+                        margin-top: 1rem;
+                    }}
+                    .article-links > div {{
+                        margin-bottom: 0.5rem;
+                    }}
+                    .article-id {{
+                        font-family: monospace;
+                        font-size: 0.9em;
+                        color: rgba(255, 255, 255, 0.7);
+                    }}
+                    .article-url {{
+                        color: #4A6FA5;
+                    }}
+                </style>
             """.format(
                 st.session_state.published_article_id,
                 st.session_state.published_article_url,
-                st.session_state.published_article_url
+                st.session_state.published_article_url,
+                st.session_state.publish_data['image_haiku']
             ), unsafe_allow_html=True)
         
         else:
