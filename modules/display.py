@@ -3,6 +3,9 @@ import streamlit as st
 import pandas as pd
 import math
 import json
+from dateutil import parser
+from datetime import datetime
+import pytz
 
 def get_bias_color(bias_value):
     """Generate color for bias value from -1 to 1"""
@@ -62,6 +65,44 @@ def format_latest_headlines(headlines, category_filter, page, topic_filter=None,
         if len(headline_text) > 100:
             headline_text = headline_text[:97] + "..."
         
+        # Parse the published date string
+        published_date = parser.parse(headline.get('Published', ''))
+        
+        # Assume the server is saving timestamps in UTC
+        server_timezone = pytz.timezone('America/Chicago')
+        
+        # Make published_date timezone-aware (server timezone)
+        published_date = published_date.replace(tzinfo=server_timezone)
+        
+        # Get the user's local timezone
+        local_timezone = pytz.timezone('US/Eastern')  # Replace with the appropriate timezone
+        
+        # Convert the published_date to the user's local timezone
+        local_published_date = published_date.astimezone(local_timezone)
+        
+        # Calculate the relative time difference
+        now = datetime.now(local_timezone)
+        time_diff = now - local_published_date
+        
+        # Format original published date/time (server timezone) and converted local date/time
+        original_published_datetime_str = published_date.strftime("%Y-%m-%d %H:%M:%S %Z")
+        published_datetime_str = local_published_date.strftime("%Y-%m-%d %H:%M:%S")
+        
+        if time_diff.days == 0:
+            if time_diff.seconds < 3600:
+                relative_time = "Just now"
+            else:
+                hours = time_diff.seconds // 3600
+                relative_time = f"{hours} hour{'s' if hours > 1 else ''} ago"
+        elif time_diff.days < 30:
+            relative_time = f"{time_diff.days} day{'s' if time_diff.days > 1 else ''} ago"
+        elif time_diff.days < 365:
+            months = time_diff.days // 30
+            relative_time = f"{months} month{'s' if months > 1 else ''} ago"
+        else:
+            years = time_diff.days // 365
+            relative_time = f"{years} year{'s' if years > 1 else ''} ago"
+        
         headlines_html += f"""
             <div style="margin-bottom: 0.75rem; padding: 0.5rem; border: 2px solid {bias_color}; border-radius: 4px;">
                 <div style="font-size: 0.9em; color: rgba(255, 255, 255, 0.95); margin-bottom: 0.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
@@ -69,7 +110,7 @@ def format_latest_headlines(headlines, category_filter, page, topic_filter=None,
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div style="font-size: 0.8em; color: rgba(255, 255, 255, 0.7);">
-                        {headline.get('Published', '')}
+                        {relative_time}
                     </div>
                     <div style="display: flex; align-items: center;">
                         <div style="font-size: 0.8em; color: {bias_color}; margin-right: 0.5rem;">
@@ -81,6 +122,7 @@ def format_latest_headlines(headlines, category_filter, page, topic_filter=None,
                     </div>
                 </div>
             </div>
+            
         """
     
     return headlines_html, total_pages
