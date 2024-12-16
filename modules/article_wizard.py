@@ -423,29 +423,10 @@ def display_review_step():
         st.session_state.article_rejected = True
         st.rerun()
     
-    # Add a constant user text field for feedback
-    feedback = st.text_area("Provide feedback on the AI review:", key="feedback_text")
-    
-    # Update the provide_feedback function
-    def provide_feedback():
-        if feedback:
-            with st.spinner("Re-evaluating article based on feedback..."):
-                updated_evaluation = evaluate_article_with_ai(st.session_state.article_data, feedback)
-                if updated_evaluation:
-                    st.session_state.evaluation = updated_evaluation
-                    st.success("Article re-evaluated based on feedback!")
-                    
-                    # Reset the view similar to original evaluation load
-                    st.session_state.review_step_initialized = False
-                    st.rerun()
-                else:
-                    st.error("Failed to re-evaluate article based on feedback")
-    
-    # Update the buttons to include the "Provide Feedback" button
+    # Update the buttons to remove the "Provide Feedback" button
     buttons = [
         ("Continue to Image Generation", "continue_to_image", continue_to_image),
-        ("Reject Article", "review_reject", reject_article),
-        ("Provide Feedback", "provide_feedback", provide_feedback)
+        ("Reject Article", "review_reject", reject_article)
     ]
     
     # Define color mapping functions
@@ -596,59 +577,8 @@ def display_review_step():
             # Force a rerun to apply the category change
             st.rerun()
         
-        # Add CSS for centered metrics and layout
-        st.markdown("""
-            <style>
-                div[data-testid="metric-container"] {
-                    background-color: #f8f9fa;
-                    border-radius: 8px;
-                    padding: 1rem;
-                    text-align: center !important;
-                    margin-bottom: 0.5rem;
-                }
-                
-                div[data-testid="metric-container"] > div {
-                    width: 100%;
-                }
-                
-                div[data-testid="metric-container"] label {
-                    display: block;
-                    text-align: center;
-                    color: #444;
-                    font-weight: 500;
-                }
-                
-                div[data-testid="metric-container"] div[data-testid="metric-value"] {
-                    text-align: center;
-                    font-size: 1.2rem !important;
-                }
-                
-                .pagination-nav {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    width: 100%;
-                    margin-top: 1rem;
-                }
-                
-                .pagination-nav .pagination-text {
-                    flex-grow: 1;
-                    text-align: center;
-                }
-                
-                .pagination-nav .pagination-arrow {
-                    cursor: pointer;
-                    padding: 0.25rem;
-                }
-            </style>
-        """, unsafe_allow_html=True)
-        
-        # Category row
-        category = eval_data.get('cat', 'Unknown')
-        st.metric("Category", category)
-        
-        # Create two columns for Analysis and Metrics
-        col1, col2 = st.columns([2, 1])
+        # Create two columns for AI response and feedback
+        col1, col2 = st.columns([3, 2])
         
         with col1:
             # Create tabs for different analysis aspects
@@ -770,109 +700,37 @@ def display_review_step():
                 """)
         
         with col2:
-            # Metrics stack
-            quality_score = eval_data.get('quality_score', 0)
-            try:
-                quality_score = float(quality_score)
-            except (ValueError, TypeError):
-                quality_score = 0.0
-            st.metric("Quality Score", f"{quality_score:.1f}/10")
+            st.markdown("### Provide Feedback")
+            feedback = st.text_area("Enter your feedback on the AI review:")
             
-            bias_text = eval_data.get('bs_p', 'Neutral')
-            try:
-                bias_mapping = {
-                    'Far Left': -1.0,
-                    'Left': -0.6,
-                    'Center Left': -0.3,
-                    'Neutral': 0.0,
-                    'Center Right': 0.3,
-                    'Right': 0.6,
-                    'Far Right': 1.0
-                }
-                bias_numeric = bias_mapping.get(bias_text, 0.0)
-                bias_color = get_bias_color(bias_numeric)
-                
-                st.markdown(f"""
-                    <style>
-                        [data-testid="metric-container"]:nth-of-type(3) {{
-                            background: linear-gradient(to right, {bias_color}22, {bias_color}44) !important;
-                            border-color: {bias_color} !important;
-                        }}
-                        [data-testid="metric-container"]:nth-of-type(3) [data-testid="metric-value"] {{
-                            color: {bias_color} !important;
-                        }}
-                    </style>
-                """, unsafe_allow_html=True)
-                
-                st.metric("Bias Score", f"{bias_numeric:+.1f}")  # Show numeric value with sign
-            except Exception as e:
-                st.metric("Bias Score", "0.0")  # Default to 0.0 if conversion fails
-            
-            trend_score = eval_data.get('trend')
-            try:
-                trend_score = float(trend_score)
-            except (ValueError, TypeError):
-                trend_score = 0.0
-            st.metric("Propagation Index", f"{trend_score:.1f}/10")
+            if st.button("Submit Feedback"):
+                with st.spinner("Re-evaluating article based on feedback..."):
+                    # Create a new chat message with the original evaluation and user feedback
+                    message = f"""
+                    Original Evaluation:
+                    {json.dumps(st.session_state.evaluation, indent=2)}
+                    
+                    User Feedback:
+                    {feedback}
+                    
+                    Please consider the above feedback and re-evaluate the article, providing an updated evaluation in the same format as the original.
+                    """
+                    
+                    # Send the message to the AI for re-evaluation
+                    updated_evaluation = evaluate_article_with_ai(st.session_state.article_data, message)
+                    
+                    if updated_evaluation:
+                        st.session_state.evaluation = updated_evaluation
+                        st.success("Article re-evaluated based on feedback!")
+                    else:
+                        st.error("Failed to re-evaluate article based on feedback")
+                    
+                    st.session_state.feedback_mode = False
+                    st.rerun()
         
-        # Add story preview section below the analysis and metrics
-        st.markdown("""
-            <style>
-                .story-preview {
-                    margin-top: 2rem;
-                    padding: 1rem;
-                    background: rgba(74, 111, 165, 0.05);
-                    border-radius: 8px;
-                    border: 1px solid rgba(74, 111, 165, 0.1);
-                }
-                .story-preview-header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-bottom: 1rem;
-                }
-                .story-preview-title {
-                    color: #4A6FA5;
-                    font-size: 1.1rem;
-                    font-weight: 500;
-                }
-            </style>
-        """, unsafe_allow_html=True)
-        
-        # Create tabs for different content views
-        preview_tabs = st.tabs(["Story", "Summary", "Haiku"])
-        
-        with preview_tabs[0]:
-            st.markdown("""
-                <div class="story-preview">
-                    <div class="story-preview-header">
-                        <div class="story-preview-title">Generated Story</div>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
-            st.markdown(st.session_state.article_data['story'], unsafe_allow_html=True)
-        
-        with preview_tabs[1]:
-            st.markdown("""
-                <div class="story-preview">
-                    <div class="story-preview-header">
-                        <div class="story-preview-title">Summary</div>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
-            st.markdown(st.session_state.article_data['summary'])
-        
-        with preview_tabs[2]:
-            st.markdown("""
-                <div class="story-preview">
-                    <div class="story-preview-header">
-                        <div class="story-preview-title">Haiku</div>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
-            haiku_lines = st.session_state.article_data['haiku'].split('\n')
-            for line in haiku_lines:
-                st.markdown(f"*{line.strip()}*")
+        # Add story summary below the AI response and feedback sections
+        st.markdown("### Story Summary")
+        st.markdown(st.session_state.article_data['summary'])
     
     except Exception as e:
         st.error(f"Error displaying evaluation results: {str(e)}")
