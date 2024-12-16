@@ -52,6 +52,29 @@ def get_category_counts(headlines):
     return sorted_categories
 
 def reset_article_state():
+    """Reset the article-related session state variables"""
+    if 'article_data' in st.session_state:
+        del st.session_state.article_data
+    if 'selected_cluster' in st.session_state:
+        del st.session_state.selected_cluster
+    if 'evaluation' in st.session_state:
+        del st.session_state.evaluation
+    if 'publish_data' in st.session_state:
+        del st.session_state.publish_data
+    if 'haiku_image_path' in st.session_state:
+        del st.session_state.haiku_image_path
+    if 'publication_success' in st.session_state:
+        del st.session_state.publication_success
+    if 'published_article_id' in st.session_state:
+        del st.session_state.published_article_id
+    if 'published_article_url' in st.session_state:
+        del st.session_state.published_article_url
+    if 'article_rejected' in st.session_state:
+        del st.session_state.article_rejected
+    if 'feedback_mode' in st.session_state:
+        del st.session_state.feedback_mode
+    st.session_state.feedback_mode = False
+    st.session_state.current_step = 0
     # Reset the article state variables
     st.session_state.article_title = ""
     st.session_state.article_text = ""

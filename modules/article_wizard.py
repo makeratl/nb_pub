@@ -1,7 +1,7 @@
 """Article generation and review wizard"""
 import streamlit as st
 from .display import get_bias_color
-from review_articles import evaluate_article_with_ai
+from .article_evaluation import evaluate_article_with_ai
 from publish_utils import publish_article, generate_and_encode_images
 from .utils import reset_article_state
 from .haiku_image_generator import generate_haiku_background
@@ -340,6 +340,13 @@ def review_article(article_data):
         st.error(f"AI Evaluation failed: {str(e)}")
         return None
 
+def extract_section(text, section_header):
+    if section_header in text:
+        sections = text.split(section_header)
+        if len(sections) > 1:
+            return sections[1].split("\n")[0].strip()
+    return ""
+
 def display_review_step():
     """Display the AI review results and article content"""
     headline = st.session_state.article_data.get('headline', '')
@@ -416,9 +423,29 @@ def display_review_step():
         st.session_state.article_rejected = True
         st.rerun()
     
+    # Add a constant user text field for feedback
+    feedback = st.text_area("Provide feedback on the AI review:", key="feedback_text")
+    
+    # Update the provide_feedback function
+    def provide_feedback():
+        if feedback:
+            with st.spinner("Re-evaluating article based on feedback..."):
+                updated_evaluation = evaluate_article_with_ai(st.session_state.article_data, feedback)
+                if updated_evaluation:
+                    st.session_state.evaluation = updated_evaluation
+                    st.success("Article re-evaluated based on feedback!")
+                    
+                    # Reset the view similar to original evaluation load
+                    st.session_state.review_step_initialized = False
+                    st.rerun()
+                else:
+                    st.error("Failed to re-evaluate article based on feedback")
+    
+    # Update the buttons to include the "Provide Feedback" button
     buttons = [
         ("Continue to Image Generation", "continue_to_image", continue_to_image),
-        ("Reject Article", "review_reject", reject_article)
+        ("Reject Article", "review_reject", reject_article),
+        ("Provide Feedback", "provide_feedback", provide_feedback)
     ]
     
     # Define color mapping functions
@@ -528,7 +555,7 @@ def display_review_step():
         # Get current article identifier (using headline as unique identifier)
         current_article = st.session_state.article_data.get('headline', '')
         
-        # Check if this is a new article or first load
+        # Check if this is a new article, first load, or re-evaluation after feedback
         is_new_article = (
             'review_step_initialized' not in st.session_state or
             'last_reviewed_article' not in st.session_state or
@@ -1253,3 +1280,32 @@ def display_final_review():
     except Exception as e:
         st.error(f"Error displaying final review: {str(e)}")
         reset_article_state()
+
+def handle_feedback():
+    st.markdown("### Provide Feedback")
+    feedback = st.text_area("Enter your feedback on the AI review:")
+    
+    if st.button("Submit Feedback"):
+        with st.spinner("Re-evaluating article based on feedback..."):
+            # Create a new chat message with the original evaluation and user feedback
+            message = f"""
+            Original Evaluation:
+            {json.dumps(st.session_state.evaluation, indent=2)}
+            
+            User Feedback:
+            {feedback}
+            
+            Please consider the above feedback and re-evaluate the article, providing an updated evaluation in the same format as the original.
+            """
+            
+            # Send the message to the AI for re-evaluation
+            updated_evaluation = evaluate_article_with_ai(st.session_state.article_data, message)
+            
+            if updated_evaluation:
+                st.session_state.evaluation = updated_evaluation
+                st.success("Article re-evaluated based on feedback!")
+            else:
+                st.error("Failed to re-evaluate article based on feedback")
+            
+            st.session_state.feedback_mode = False
+            st.rerun()

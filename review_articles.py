@@ -8,6 +8,7 @@ from chat_codegpt import chat_with_codegpt
 from colorama import init, Fore, Style
 import time  # Add this to the imports at the top
 import traceback
+from modules.article_evaluation import evaluate_article_with_ai
 
 # Initialize colorama
 init(autoreset=True)
@@ -81,61 +82,6 @@ def update_article_status(article_id: int, status: str, updates: dict = None) ->
     finally:
         conn.close()
     return False
-
-def evaluate_article_with_ai(article):
-    """Evaluate article using AI"""
-    evaluation_context = article.get('evaluation_context', '')
-    
-    prompt = f"""
-    {evaluation_context}
-    
-    Please evaluate this news article according to the above guidelines:
-    
-    Headline: {article['AIHeadline']}
-    Story: {article['AIStory']}
-    Sources: {article['Cited']}
-    
-    Provide a detailed analysis covering:
-    1. Quality Analysis: Evaluate based on the guidelines, focusing on source credibility and journalistic standards
-    2. Bias Analysis: Assess political lean and perspective balance
-    3. Propagation Potential: Rate shareability and public interest
-    
-    Return a JSON object with:
-    {{
-        "quality_score": (0-10),
-        "bs_p": ("Far Left"/"Left"/"Center Left"/"Neutral"/"Center Right"/"Right"/"Far Right"),
-        "cat": "category",
-        "topic": "main topic",
-        "trend": (0-10),
-        "reasoning": "Detailed analysis with Quality Analysis:, Bias Analysis:, and Propagation Potential: sections"
-    }}
-    """
-    
-    try:
-        response = chat_with_codegpt(prompt)
-        # print("\nDEBUG - Raw AI Response:")
-        # print(response)
-        
-        parsed_response = json.loads(response)
-        # print("\nDEBUG - Parsed JSON:")
-        # print(json.dumps(parsed_response, indent=2))
-        
-        # Validate trend score exists and is numeric
-        trend_score = parsed_response.get('trend')
-        # print(f"\nDEBUG - Trend Score: {trend_score} (Type: {type(trend_score)})")
-        
-        if trend_score is not None:
-            try:
-                parsed_response['trend'] = float(trend_score)
-            except (ValueError, TypeError):
-                # print(f"DEBUG - Could not convert trend score to float: {trend_score}")
-                parsed_response['trend'] = 0.0
-        
-        return parsed_response
-    except Exception as e:
-        print(f"Error in evaluate_article_with_ai: {str(e)}")
-        print(f"Full traceback: {traceback.format_exc()}")
-        return None
 
 def display_article(article: dict):
     """Display article information in a formatted way"""

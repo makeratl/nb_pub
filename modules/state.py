@@ -19,6 +19,8 @@ def init_session_state():
         st.session_state.headline_page = 1
     if 'selected_category' not in st.session_state:
         st.session_state.selected_category = "All Categories"
+    if 'feedback_mode' not in st.session_state:
+        st.session_state.feedback_mode = False
 
 def reset_article_state():
     """Reset article-related session state"""
@@ -53,3 +55,7 @@ def reset_article_state():
         del st.session_state.review_step_initialized
     if hasattr(st.session_state, 'last_reviewed_article'):
         del st.session_state.last_reviewed_article
+    
+    if hasattr(st.session_state, 'feedback_mode'):
+        del st.session_state.feedback_mode
+    st.session_state.feedback_mode = False
