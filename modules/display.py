@@ -113,11 +113,11 @@ def format_latest_headlines(headlines, category_filter, page, topic_filter=None,
                         {relative_time}
                     </div>
                     <div style="display: flex; align-items: center;">
-                        <div style="font-size: 0.8em; color: {bias_color}; margin-right: 0.5rem;">
-                            {bias_score:.2f}
-                        </div>
-                        <div style="font-size: 0.8em; color: rgba(192, 160, 128, 0.95);">
+                        <div style="font-size: 0.8em; color: rgba(192, 160, 128, 0.95); margin-right: 0.5rem;">
                             {headline.get('cat', '')}
+                        </div>
+                        <div style="font-size: 0.8em; color: {bias_color};">
+                            {bias_score:.2f}
                         </div>
                     </div>
                 </div>
