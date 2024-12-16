@@ -2,6 +2,7 @@
 import streamlit as st
 import pandas as pd
 import math
+import json
 
 def get_bias_color(bias_value):
     """Generate color for bias value from -1 to 1"""
@@ -50,13 +51,21 @@ def format_latest_headlines(headlines, category_filter, page, topic_filter=None,
     paginated_headlines = filtered_headlines[start_index:end_index]
     
     headlines_html = ""
-    for headline in paginated_headlines:
+    for idx, headline in enumerate(paginated_headlines):
         bias_score = float(headline.get('bs_p', 0))  # Convert to float
         bias_color = get_bias_color(bias_score)
+        headline_id = f"headline_{start_index + idx}"  # Unique ID for each headline
+        article_link = headline.get('link', '')  # Get the article link
+        
+        # Truncate headline if too long
+        headline_text = headline.get('AIHeadline', '')
+        if len(headline_text) > 100:
+            headline_text = headline_text[:97] + "..."
+        
         headlines_html += f"""
             <div style="margin-bottom: 0.75rem; padding: 0.5rem; border: 2px solid {bias_color}; border-radius: 4px;">
-                <div style="font-size: 0.9em; color: rgba(255, 255, 255, 0.95); margin-bottom: 0.25rem;">
-                    {headline.get('AIHeadline', '')}
+                <div style="font-size: 0.9em; color: rgba(255, 255, 255, 0.95); margin-bottom: 0.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    <a href="{article_link}" target="_blank" style="color: rgba(255, 255, 255, 0.95); text-decoration: none;">{headline_text}</a>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div style="font-size: 0.8em; color: rgba(255, 255, 255, 0.7);">
