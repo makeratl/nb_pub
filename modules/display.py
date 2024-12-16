@@ -128,13 +128,11 @@ def format_latest_headlines(headlines, category_filter, page, topic_filter=None,
     return headlines_html, total_pages
 
 def create_custom_progress_bar(bias_value, i):
-    """Create a custom HTML progress bar with proper color styling"""
+    """Create a custom HTML color block with proper color styling"""
     try:
         bias = float(bias_value)
-        normalized = (bias + 1) / 2  # Convert -1:1 to 0:1 scale
-        percentage = normalized * 100
         bias_color = get_bias_color(bias)
         
-        return f"""<div style="flex: 1; background-color: rgba(250, 252, 255, 0.9); border-radius: 3px; padding: 1px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.15); border: 1px solid rgba(64, 82, 100, 0.25);"><div style="width: {percentage}%; height: 10px; background-color: {bias_color}; border-radius: 2px; transition: width 0.3s ease; box-shadow: 0 1px 1px rgba(0,0,0,0.08);"></div></div>"""
+        return f"""<div style="flex: 1; height: 10px; background-color: {bias_color}; border-radius: 3px;"></div>"""
     except Exception:
         return ""  # Return empty string on error

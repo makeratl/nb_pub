@@ -320,11 +320,28 @@ def main():
                     st.rerun()
         
         elif st.session_state.clusters:
+            # Get unique categories from the clusters
+            categories = list(set(cluster['category'] for cluster in st.session_state.clusters))
+            categories.insert(0, "All Categories")
+
+            # Add category filter dropdown
+            selected_category = st.selectbox(
+                "Filter by Category",
+                categories,
+                key="category_filter",
+                index=0
+            )
+
             # Display clusters
-            for i, cluster in enumerate(st.session_state.clusters):
+            filtered_clusters = [
+                cluster for cluster in st.session_state.clusters
+                if selected_category == "All Categories" or cluster['category'] == selected_category
+            ]
+
+            for i, cluster in enumerate(filtered_clusters):
                 is_evaluating = (hasattr(st.session_state, 'evaluating_cluster') and 
-                               st.session_state.evaluating_cluster == i and 
-                               not hasattr(st.session_state, 'article_rejected'))
+                                st.session_state.evaluating_cluster == i and 
+                                not hasattr(st.session_state, 'article_rejected'))
                 opacity = "1" if is_evaluating or not hasattr(st.session_state, 'evaluating_cluster') else "1"
                 
                 st.markdown(
@@ -333,13 +350,15 @@ def main():
                         <div style="font-weight: 500; font-size: 1em; margin-bottom: 0.5rem; color: rgba(255, 255, 255, 0.95);">
                             {cluster['subject']}
                         </div>
-                        <div style="color: rgba(192, 160, 128, 0.95); font-size: 0.85em; margin-bottom: 0.5rem;">
-                            {cluster['category']}
-                        </div>
-                        <div style="display: flex; align-items: center; width: 100%; padding: 4px 0;">
-                            <div style="flex: 0 0 auto; padding-right: 15px; font-size: 0.9em; color: rgba(255, 255, 255, 0.8);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <div style="color: rgba(192, 160, 128, 0.95); font-size: 0.85em;">
+                                {cluster['category']}
+                            </div>
+                            <div style="color: rgba(255, 255, 255, 0.8); font-size: 0.9em;">
                                 Articles: {cluster['cluster_size']}
                             </div>
+                        </div>
+                        <div style="display: flex; align-items: center; width: 100%; padding: 4px 0;">
                             <div style="flex: 1;">{create_custom_progress_bar(cluster.get('bias', 0), i)}</div>
                         </div>
                     </div>
