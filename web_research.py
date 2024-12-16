@@ -277,7 +277,7 @@ def main():
                 st.rerun()
 
     # Main content area
-    col1, col2 = st.columns([0.8, 3])
+    col1, col2 = st.columns([1, 3])
     
     with col1:
         if 'is_loading_clusters' not in st.session_state:
