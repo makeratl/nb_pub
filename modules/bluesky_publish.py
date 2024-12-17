@@ -36,7 +36,15 @@ def create_post(session, text, image_blob, article_url, hashtags):
     url_start = len(text) + 1
     url_end = url_start + len(article_url) + 24  # Add 24 to account for "Read the full article: " and the period
     
+    # Limit hashtags to a maximum of 5
+    hashtags = ' '.join(hashtags.split()[:5])
+    
     post_text = f"{text}\n\nRead the full article: {article_url}\n\n{hashtags}"
+    
+    # Truncate post_text if it exceeds 300 characters
+    if len(post_text) > 300:
+        truncated_text = text[:200] + "..."  # Truncate the main text
+        post_text = f"{truncated_text}\n\nRead the full article: {article_url}\n\n{hashtags}"
     
     post = {
         "$type": "app.bsky.feed.post",

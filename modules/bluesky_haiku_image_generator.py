@@ -32,8 +32,8 @@ def generate_image(prompt):
         "images": 1,
         "prompt": prompt,
         "model": "dreamshaperXL_lightningDPMSDE",
-        "width": 768,
-        "height": 768,  # Change height to match width for square image
+        "width": 512,
+        "height": 512,  # Change height to match width for square image
         "steps": 8,
         "cfg_scale": 4.5,
         "sampler": "euler_ancestral",

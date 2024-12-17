@@ -862,6 +862,27 @@ def display_image_step():
                     'image_haiku': encoded_standard_image_with_text,
                 })
                 
+                # Generate new Bluesky image
+                bluesky_image_path, _ = generate_bluesky_haiku_background(
+                    st.session_state.publish_data.get('AIHaiku', ''),
+                    st.session_state.publish_data.get('AIHeadline', ''),
+                    st.session_state.publish_data.get('article_date', '')
+                )
+                
+                if bluesky_image_path:
+                    st.session_state.bluesky_image_path = bluesky_image_path
+                    
+                    encoded_bluesky_image, encoded_bluesky_image_with_text = generate_and_encode_images(
+                        bluesky_image_path,
+                        "bluesky_haikubg_with_text.png"
+                    )
+                    st.session_state.publish_data.update({
+                        'bluesky_image_data': encoded_bluesky_image,
+                        'bluesky_image_haiku': encoded_bluesky_image_with_text
+                    })
+                else:
+                    st.error("Failed to generate new Bluesky image")
+                
                 # Save updated publish data to file
                 with open('publish.json', 'w') as f:
                     json.dump(st.session_state.publish_data, f, indent=2)
