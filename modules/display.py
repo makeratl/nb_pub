@@ -41,7 +41,7 @@ def get_bias_color(bias_value):
     except (ValueError, TypeError):
         return 'rgba(28, 28, 28, 0.95)'  # Default dark background for any errors
 
-def format_latest_headlines(headlines, category_filter, page, topic_filter=None, items_per_page=5):
+def format_latest_headlines(headlines, category_filter, page_number, topic_filter=None, items_per_page=5):
     filtered_headlines = [
         headline for headline in headlines
         if (category_filter == "All Categories" or headline.get('cat', '') == category_filter)
@@ -49,7 +49,7 @@ def format_latest_headlines(headlines, category_filter, page, topic_filter=None,
     ]
     
     total_pages = math.ceil(len(filtered_headlines) / items_per_page)
-    start_index = (page - 1) * items_per_page
+    start_index = (page_number - 1) * items_per_page
     end_index = start_index + items_per_page
     paginated_headlines = filtered_headlines[start_index:end_index]
     
@@ -57,6 +57,7 @@ def format_latest_headlines(headlines, category_filter, page, topic_filter=None,
     for idx, headline in enumerate(paginated_headlines):
         bias_score = float(headline.get('bs_p', 0))  # Convert to float
         bias_color = get_bias_color(bias_score)
+        qas_score = headline.get('qas', 0)  # Get QAS score, default to 0 if not present
         headline_id = f"headline_{start_index + idx}"  # Unique ID for each headline
         article_link = headline.get('link', '')  # Get the article link
         

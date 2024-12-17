@@ -130,7 +130,7 @@ def main():
         with col2:
             time_range = st.selectbox(
                 "Time",
-                ["1h", "3h", "4h", "6h", "12h", "24h", "2d", "3d", "5d", "7d"],
+                ["1h", "3h", "4h", "6h", "12h", "24h", "2d", "3d", "5d", "7d","14d","30d","60d","90d","180d","1y","2y","3yr"],
                 index=5,
                 label_visibility="collapsed"
             )

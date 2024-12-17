@@ -1,7 +1,0 @@
-I want to create a new process utilizing the tools we have for AI evaluations.
-
-On step 2, I want to give the ability to talk about AI's recommendation and have it reconsider the evaluation.
-
-This is because we often get very breaking news, which can trigger "inplausable" concerns about the facts and AI scores the article low.  I want to be able to enter a message back to AI to advise what I know and ask it to try again.
-
-I believe we could build a new function similar to evaluate_article_with_ai to be a discussion with AI.  We would need to ensure the message history is maintained during an article review session, but cleared when a new article is requested for evaluation.
