@@ -47,6 +47,7 @@ def evaluate_article_with_ai(article, feedback_message=None):
         1. Quality Analysis: Evaluate based on the guidelines, focusing on source credibility and journalistic standards 
         2. Bias Analysis: Assess political lean and perspective balance
         3. Propagation Potential: Rate shareability and public interest
+        4. Hashtag recommendation: Provide a list of hashtags that are relevant to the article
         
         Return a JSON object with:
         {{
@@ -55,7 +56,8 @@ def evaluate_article_with_ai(article, feedback_message=None):
             "cat": "category",
             "topic": "main topic", 
             "trend": (0-10),
-            "reasoning": "Detailed analysis with Quality Analysis:, Bias Analysis:, and Propagation Potential: sections"
+            "reasoning": "Detailed analysis with Quality Analysis:, Bias Analysis:, and Propagation Potential: sections",
+            "hashtags": "List of relevant hashtags formatted for publishing direct on social media"
         }}
         """
     

@@ -13,6 +13,8 @@ def init_session_state():
         st.session_state.evaluation = None
     if 'haiku_image' not in st.session_state:
         st.session_state.haiku_image = None
+    if 'bluesky_image_path' not in st.session_state:
+        st.session_state.bluesky_image_path = None
     if 'publish_data' not in st.session_state:
         st.session_state.publish_data = None
     if 'headline_page' not in st.session_state:

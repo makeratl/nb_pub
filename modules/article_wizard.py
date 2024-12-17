@@ -5,6 +5,7 @@ from .article_evaluation import evaluate_article_with_ai
 from publish_utils import publish_article, generate_and_encode_images
 from .utils import reset_article_state
 from .haiku_image_generator import generate_haiku_background
+from .bluesky_haiku_image_generator import generate_bluesky_haiku_background
 from .bluesky_publish import publish_to_bluesky
 import json
 import os
@@ -335,7 +336,8 @@ def review_article(article_data):
             'bs_p': evaluation.get('bs_p', 'Neutral'),
             'reasoning': evaluation.get('reasoning', 'No analysis provided'),
             'topic': evaluation.get('topic', 'Unknown'),
-            'trend': evaluation.get('trend', 0.0)
+            'trend': evaluation.get('trend', 0.0),
+            'hashtags': evaluation.get('hashtags', '')
         }
         return evaluation
         
@@ -418,6 +420,29 @@ def display_review_step():
                 st.session_state.initial_image_generated = True
             else:
                 st.error("Failed to generate initial haiku image")
+        
+        # Trigger Bluesky image generation when entering step 3
+        with st.spinner("Generating initial Bluesky haiku image..."):
+            bluesky_image_path, _ = generate_bluesky_haiku_background(
+                st.session_state.publish_data.get('AIHaiku', ''),
+                st.session_state.publish_data.get('AIHeadline', ''),
+                st.session_state.publish_data.get('article_date', '')
+            )
+            if bluesky_image_path:
+                st.session_state.bluesky_image_path = bluesky_image_path
+                st.success("Initial Bluesky haiku image generated successfully!")
+                
+                encoded_bluesky_image, encoded_bluesky_image_with_text = generate_and_encode_images(
+                    bluesky_image_path,
+                    "bluesky_haikubg_with_text.png"
+                )
+                st.session_state.publish_data.update({
+                    'bluesky_image_data': encoded_bluesky_image,
+                    'bluesky_image_haiku': encoded_bluesky_image_with_text
+                })
+                st.session_state.initial_bluesky_image_generated = True
+            else:
+                st.error("Failed to generate initial Bluesky haiku image")
         
         st.rerun()
     
@@ -603,8 +628,8 @@ def display_review_step():
         
         with col1:
             # Create tabs for different analysis aspects
-            quality_tab, bias_tab, prop_tab, reasoning_tab = st.tabs([
-                 "Quality", "Bias", "Propagation", "Raw Reasoning"
+            quality_tab, bias_tab, prop_tab, hashtag_tab, reasoning_tab = st.tabs([
+                 "Quality", "Bias", "Propagation", "Hashtags", "Raw Reasoning"
             ])
             
             with quality_tab:
@@ -712,6 +737,14 @@ def display_review_step():
                     {prop_analysis}
                 """)
             
+            with hashtag_tab:
+                hashtags = eval_data.get('hashtags', '')
+                st.markdown(f"""
+                    ### Recommended Hashtags
+                    
+                    {hashtags}
+                """)
+            
             with reasoning_tab:
                 reasoning = eval_data.get('reasoning', 'No analysis provided')
                 st.markdown(f"""
@@ -805,42 +838,43 @@ def display_image_step():
     trend_score = st.session_state.publish_data.get('trend', 0.0)
     
     def regenerate_image():
-        with st.spinner("Generating new image..."):
-            image_path, image_prompt = generate_haiku_background(
+        with st.spinner("Generating new images..."):
+            standard_image_path, image_prompt = generate_haiku_background(
                 st.session_state.publish_data.get('AIHaiku', ''),
                 st.session_state.publish_data.get('AIHeadline', ''),
                 st.session_state.publish_data.get('article_date', '')  # Pass article date
             )
-            if image_path:
-                # Update session state with new image path
-                st.session_state.haiku_image_path = image_path
+            
+            if standard_image_path:
+                # Update session state with new image paths
+                st.session_state.haiku_image_path = standard_image_path
                 
                 # Update publish data with new image prompt
                 st.session_state.publish_data['image_prompt'] = image_prompt
                 
                 # Generate and store encoded images for publishing
-                encoded_image, encoded_image_with_text = generate_and_encode_images(
-                    image_path,
-                    "haikubg_with_text.png"  # Assuming this is the file path of the image with text
+                encoded_standard_image, encoded_standard_image_with_text = generate_and_encode_images(
+                    standard_image_path,
+                    "haikubg_with_text.png"  # Assuming this is the file path of the standard image with text
                 )
                 st.session_state.publish_data.update({
-                    'image_data': encoded_image,
-                    'image_haiku': encoded_image_with_text
+                    'image_data': encoded_standard_image,
+                    'image_haiku': encoded_standard_image_with_text,
                 })
                 
                 # Save updated publish data to file
                 with open('publish.json', 'w') as f:
                     json.dump(st.session_state.publish_data, f, indent=2)
-                # st.success("New image generated successfully!")
+                # st.success("New images generated successfully!")
             else:
-                st.error("Failed to generate new image")
+                st.error("Failed to generate new images")
     
     def continue_to_final():
         st.session_state.current_step = 4
         st.rerun()
     
     buttons = [
-        ("Regenerate Image", "regenerate_image", regenerate_image),
+        ("Regenerate Images", "regenerate_image", regenerate_image),
         ("Continue to Final Review", "image_continue_review", continue_to_final)
     ]
     
@@ -975,32 +1009,67 @@ def display_image_step():
         return
     
     # Main content
-    st.markdown("#### Haiku Visualization")
+    st.markdown("#### Haiku Visualizations")
     
-    # Check if haiku_image_path exists in session state before displaying
-    if st.session_state.haiku_image_path:
-        container_style = """
-            <style>
-                [data-testid="stImage"] {
-                    width: 70%;
-                    margin: 0 auto;
-                    display: block;
-                }
-                [data-testid="stImage"] img {
-                    border-radius: 8px;
-                }
-            </style>
-        """
-        st.markdown(container_style, unsafe_allow_html=True)
-        st.image(st.session_state.haiku_image_path, caption="Generated Haiku Image", use_container_width=False)
-        
-        with st.expander("Image Prompt", expanded=False):
-            st.info(st.session_state.publish_data.get('image_prompt', ''))
-    else:
-        st.warning("No haiku image available. Please try regenerating the image.")
+    col1, col2 = st.columns([2, 1])
+    
+    image_label_style = """
+        <style>
+            .image-label {
+                margin-bottom: 0.5rem;
+            }
+        </style>
+    """
+    st.markdown(image_label_style, unsafe_allow_html=True)
+    
+    with col1:
+        st.markdown('<div class="image-label">Standard Image</div>', unsafe_allow_html=True)
+        # Check if haiku_image_path exists in session state before displaying
+        if st.session_state.haiku_image_path:
+            container_style = """
+                <style>
+                    [data-testid="stImage"] {
+                        width: 100%;
+                        margin: 0 auto;
+                        display: block;
+                    }
+                    [data-testid="stImage"] img {
+                        border-radius: 8px;
+                        object-fit: contain;
+                    }
+                </style>
+            """
+            st.markdown(container_style, unsafe_allow_html=True)
+            st.image(st.session_state.haiku_image_path, caption="", use_container_width=False)
+        else:
+            st.warning("No standard image available. Please try regenerating the images.")
+    
+    with col2:
+        st.markdown('<div class="image-label">Bluesky Image</div>', unsafe_allow_html=True)
+        # Check if bluesky_image_path exists in session state before displaying
+        if st.session_state.bluesky_image_path:
+            container_style = """
+                <style>
+                    [data-testid="stImage"] {
+                        width: 100%;
+                        margin: 0 auto;
+                        display: block;
+                    }
+                    [data-testid="stImage"] img {
+                        border-radius: 8px;
+                    }
+                </style>
+            """
+            st.markdown(container_style, unsafe_allow_html=True)
+            st.image(st.session_state.bluesky_image_path, caption="", use_container_width=False)
+        else:
+            st.warning("No Bluesky image available. Please try regenerating the images.")
+    
+    with st.expander("Image Prompt", expanded=False):
+        st.info(st.session_state.publish_data.get('image_prompt', ''))
     
     # Clear status after image generation
-    if st.session_state.haiku_image_path:
+    if st.session_state.haiku_image_path and st.session_state.bluesky_image_path:
         st.empty()
 
 def display_final_review():
@@ -1031,8 +1100,9 @@ def display_final_review():
                 # Publish to Bluesky
                 haiku = st.session_state.publish_data.get('AIHaiku', '')
                 article_url = st.session_state.published_article_url
-                image_path = "haikubg_with_text.png"  # Assuming the image is saved with this filename
-                bluesky_result = publish_to_bluesky(haiku, article_url, image_path)
+                image_path = "bluesky_haikubg_with_text.png"  # Assuming the image is saved with this filename
+                hashtags = st.session_state.evaluation.get('hashtags', '')
+                bluesky_result = publish_to_bluesky(haiku, article_url, image_path, hashtags)
                 
                 st.session_state.bluesky_success = True
                 st.success("Article posted successfully to Bluesky!")

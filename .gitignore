@@ -6,3 +6,5 @@ __pycache__/haikubackground.cpython-311.pyc
 .env
 *.pyc
 start_swarm_and_research.bat
+bluesky_haikubg_with_text.png
+bluesky_haikubg.png

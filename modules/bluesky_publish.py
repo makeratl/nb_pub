@@ -29,14 +29,14 @@ def upload_image(session, image_path):
     resp.raise_for_status()
     return resp.json()["blob"]
 
-def create_post(session, text, image_blob, article_url):
+def create_post(session, text, image_blob, article_url, hashtags):
     now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     
     # Calculate the start and end positions of the article URL in the text
     url_start = len(text) + 1
     url_end = url_start + len(article_url) + 24  # Add 24 to account for "Read the full article: " and the period
     
-    post_text = f"{text}\n\nRead the full article: {article_url}"
+    post_text = f"{text}\n\nRead the full article: {article_url}\n\n{hashtags}"
     
     post = {
         "$type": "app.bsky.feed.post",
@@ -79,11 +79,11 @@ def create_post(session, text, image_blob, article_url):
     resp.raise_for_status()
     return resp.json()
 
-def publish_to_bluesky(haiku, article_url, image_path):
+def publish_to_bluesky(haiku, article_url, image_path, hashtags):
     try:
         session = create_session()
         image_blob = upload_image(session, image_path)
-        post_result = create_post(session, haiku, image_blob, article_url)
+        post_result = create_post(session, haiku, image_blob, article_url, hashtags)
         print(f"Published to Bluesky: {json.dumps(post_result, indent=2)}")
     except requests.exceptions.RequestException as e:
         print(f"Error publishing to Bluesky: {str(e)}")
