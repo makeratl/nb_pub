@@ -131,7 +131,7 @@ def display_article_step():
                 font-weight: 500;
             }}
             .quality-score {{
-                color: rgba(0, 255, 0, 0.7);
+                color: {'#ff0000' if quality_score < 6 else 'rgba(0, 255, 0, 0.7)'};
             }}
             .bias-score {{
                 color: rgba(255, 255, 255, 0.7);
@@ -297,6 +297,8 @@ def review_article(article_data):
        - Writing clarity and structure
        - Internal consistency
        - Professional journalistic standards
+       - Is the Article of world or social importance (is it worth talking about?)
+       - Is there real and actionable information in the article?
        
     2. For current events and rapidly changing situations:
        - Focus on source reliability over fact verification
@@ -511,13 +513,13 @@ def display_review_step():
                 font-weight: 500;
             }}
             .quality-score {{
-                color: rgba(0, 255, 0, 0.7);
+                color: {'#ff0000' if quality_score < 6 else 'rgba(0, 255, 0, 0.7)'};
             }}
             .bias-score {{
                 color: rgba(255, 255, 255, 0.7);
             }}
             .propagation-score {{
-                color: rgba(0, 255, 0, 0.7);
+                color: {'#ff0000' if trend_score < 8 else 'rgba(0, 255, 0, 0.7)'};
             }}
         </style>
         <div class="step-header">
@@ -904,13 +906,13 @@ def display_image_step():
                 font-weight: 500;
             }}
             .quality-score {{
-                color: rgba(0, 255, 0, 0.7);
+                color: {'#ff0000' if quality_score < 6 else 'rgba(0, 255, 0, 0.7)'};
             }}
             .bias-score {{
                 color: rgba(255, 255, 255, 0.7);
             }}
             .propagation-score {{
-                color: rgba(0, 255, 0, 0.7);
+                color: {'#ff0000' if trend_score < 8 else 'rgba(0, 255, 0, 0.7)'};
             }}
         </style>
         <div class="step-header">

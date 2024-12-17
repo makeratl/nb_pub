@@ -9,14 +9,17 @@ def analyze_cluster(cluster):
     # Filter for unique titles and sources
     seen_titles = set()
     seen_sources = set()
+    seen_title_source_pairs = set()
     filtered_articles = []
     for article in articles:
         title = article['title']
         source = article.get('name_source', 'Unknown')
-        if title not in seen_titles and source not in seen_sources:
+        title_source_pair = (title, source)
+        if title_source_pair not in seen_title_source_pairs:
             filtered_articles.append(article)
             seen_titles.add(title)
             seen_sources.add(source)
+            seen_title_source_pairs.add(title_source_pair)
     
     # Check if cluster has enough unique articles
     if len(filtered_articles) < 3:
@@ -66,7 +69,32 @@ def create_article(cluster):
             if len(articles_data) >= 8:
                 break
 
-    prompt = f"""Create an article based on these sources. Include a headline, haiku, full story, and a one-paragraph summary.
+    prompt = f"""Create an article based on these sources with the following components:
+
+    1. Headline: 
+    - Keep it objective, clear and factual
+    - Avoid clickbait or sensationalized language
+    - Focus on informing rather than attracting clicks
+    - Use concise, straightforward language
+
+    2. Haiku:
+    - Follow traditional 5-7-5 syllable format
+    - Be clever and insightful while remaining relevant
+    - Capture the essence of the story creatively
+    - Avoid mundane or obvious statements
+
+    3. Full Story:
+    - Structure with clear paragraphs and sections
+    - Use semantic HTML tags (<p>, <h2>, etc.) for organization
+    - Avoid inline styles - keep HTML clean and semantic
+    - Include relevant quotes and attributions
+    - Maintain objective, balanced reporting
+
+    4. Summary:
+    - Provide a single, concise paragraph
+    - Capture key points and significance
+    - Keep focused and avoid unnecessary details
+    - End with clear takeaway or context
     The story should be in HTML format.
     
     Sources: {json.dumps(articles_data, indent=2)}"""
