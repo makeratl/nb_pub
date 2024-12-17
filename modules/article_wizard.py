@@ -5,6 +5,7 @@ from .article_evaluation import evaluate_article_with_ai
 from publish_utils import publish_article, generate_and_encode_images
 from .utils import reset_article_state
 from .haiku_image_generator import generate_haiku_background
+from .bluesky_publish import publish_to_bluesky
 import json
 import os
 import base64
@@ -1012,6 +1013,9 @@ def display_final_review():
     
     def publish_article_action():
         with st.spinner("Publishing article..."):
+            # Update the AISummary with the raw reasoning data
+            st.session_state.publish_data['AISummary'] = st.session_state.evaluation.get('reasoning', '')
+            
             article_id = publish_article(
                 st.session_state.publish_data,
                 os.environ.get("PUBLISH_API_KEY")
@@ -1023,6 +1027,16 @@ def display_final_review():
                 st.success(f"""Article published successfully! 
                     \nID: {article_id}
                     \nView at: [{st.session_state.published_article_url}]({st.session_state.published_article_url})""")
+                
+                # Publish to Bluesky
+                haiku = st.session_state.publish_data.get('AIHaiku', '')
+                article_url = st.session_state.published_article_url
+                image_path = "haikubg_with_text.png"  # Assuming the image is saved with this filename
+                bluesky_result = publish_to_bluesky(haiku, article_url, image_path)
+                
+                st.session_state.bluesky_success = True
+                st.success("Article posted successfully to Bluesky!")
+                
                 st.rerun()  # Rerun to update button state
     
     # Check if the article has been published or rejected in the current session
@@ -1128,6 +1142,10 @@ def display_final_review():
                                     <a href="{}" target="_blank" class="article-url">{}</a>
                                 </div>
                             </div>
+                            <div class="bluesky-status">
+                                <strong>Bluesky Post:</strong>
+                                <span class="bluesky-success">Posted successfully</span>
+                            </div>
                         </div>
                         <div class="article-image">
                             <img src="{}" alt="Article Haiku Image" style="width: 30vw; margin-left: 2rem;" />
@@ -1168,6 +1186,12 @@ def display_final_review():
                     .article-url {{
                         color: #4A6FA5;
                     }}
+                    .bluesky-status {{
+                        margin-top: 1rem;
+                    }}
+                    .bluesky-success {{
+                        color: #2ecc71;
+                    }}
                 </style>
             """.format(
                 st.session_state.published_article_id,
@@ -1204,8 +1228,9 @@ def display_final_review():
                 else:
                     st.warning("No haiku image available")
                 
+                # Display the article summary without saving it to the database
                 st.markdown("**Summary:**")
-                st.markdown(st.session_state.publish_data.get('AISummary', 'No summary'))
+                st.markdown(st.session_state.article_data.get('summary', 'No summary'))
             
             with col2:
                 st.markdown("### Publication Details")
