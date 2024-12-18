@@ -56,3 +56,48 @@ When prompted with "Let's look at the latest with {topic}":
 ## Continuous Improvement
 - Regularly review and update these guidelines based on user feedback and evolving journalistic standards
 - Stay informed about changes in global news landscapes and adjust reporting strategies accordingly
+
+## Technical Guidelines
+
+### Tech Stack Overview
+- Python: The primary programming language used for the project
+- Streamlit: A Python library for building interactive web applications
+- LLM Backends:
+  - CodeGPT: An AI model for code generation and analysis
+  - LMStudio: A local inference platform for language models
+
+### Streamlit Best Practices
+- Use appropriate Streamlit components for each UI element (e.g., `st.text_input` for input fields, `st.button` for buttons)
+- Manage application state using Streamlit's `session_state` object
+- Optimize performance by minimizing redundant computation and using caching when possible
+- Follow Streamlit's layout and styling conventions for a consistent user experience
+
+### Code Organization and Modularity
+- Separate concerns by organizing code into distinct modules and scripts based on functionality
+- Use clear and descriptive names for variables, functions, and classes
+- Keep functions and classes small and focused on a single responsibility
+- Use appropriate design patterns and abstractions to maintain a clean and maintainable codebase
+
+### API Usage and Error Handling
+- Use the `requests` library for making HTTP requests to external APIs
+- Handle API errors gracefully by catching exceptions and providing informative error messages to the user
+- Use appropriate authentication methods (e.g., API keys) and follow each API's best practices and rate limits
+- Validate and sanitize user input before passing it to APIs
+
+### Testing and Debugging
+- Write unit tests for critical functions and modules using a testing framework like `pytest`
+- Use Streamlit's built-in debugging tools, such as `st.echo` and `st.exception`, to troubleshoot issues
+- Log important events and errors for easier debugging and monitoring
+- Regularly test the application manually to catch any issues not covered by automated tests
+
+### Documentation and Commenting
+- Provide clear and concise docstrings for all functions and classes, describing their purpose, parameters, and return values
+- Use inline comments to explain complex or non-obvious code segments
+- Keep the README file up-to-date with the latest information about the project's features, setup instructions, and usage guidelines
+- Maintain a CHANGELOG file to track significant changes and updates to the project
+
+### Performance Optimization
+- Use caching and memoization techniques to avoid redundant computation
+- Minimize the use of expensive operations, such as large data transfers or complex computations, in the Streamlit application
+- Optimize database queries and use appropriate indexing for faster data retrieval
+- Monitor application performance regularly and profile code to identify and fix performance bottlenecks

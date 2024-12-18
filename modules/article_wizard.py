@@ -784,7 +784,7 @@ def display_review_step():
         
         # Add story summary below the AI response and feedback sections
         st.markdown("### Story Summary")
-        st.markdown(st.session_state.article_data['summary'])
+        st.markdown(st.session_state.article_data['story'], unsafe_allow_html=True)
     
     except Exception as e:
         st.error(f"Error displaying evaluation results: {str(e)}")

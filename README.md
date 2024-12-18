@@ -1,83 +1,70 @@
-# NB Publisher
+# AI News Brew
 
-NB Publisher is a Python-based project for generating and publishing AI-powered news articles with haiku backgrounds, supporting multiple LLM backends including LMStudio and CodeGPT.
+AI News Brew is a Python-based project for generating and publishing AI-powered news articles. It has evolved from a series of Python scripts into a full-fledged web application dashboard with expanding capabilities.
 
-## Features
+## Key Features
 
-- Generate news articles based on clustered headlines using multiple LLM backends
-- Create and customize haiku backgrounds for articles with text overlay
-- Support for local LLM inference using LMStudio
-- CodeGPT integration for article generation
-- Automated article review and publishing workflow
-- Configurable LLM settings and chat interfaces
-- Environment validation and setup tools
-- Image processing and legacy image update utilities
+- Fetch latest news headlines and articles using the NewsCatcher API
+- Analyze news clusters to identify common topics, categories, subjects, and political bias
+- Generate AI-written news articles based on selected news clusters 
+- Create customized haiku background images for articles with text overlay
+- Automated article review process with AI evaluation and user feedback
+- Publish articles to the AI News Brew platform with images
+- Web-based research and publishing interface built with Streamlit
+- Support for multiple LLM backends, including CodeGPT and LMStudio
+- Configurable LLM settings and prompts for article generation and analysis
+- Utilities for environment validation, chat interface testing, and legacy image updates
 
-## Components
+## Main Components
 
-- `nb_research.py` / `nb_research_lmstudio.py`: Main article generation scripts
-- `lmstudio_config.py`: Configuration for LMStudio backend
-- `lmstudio_chat.py`: Chat interface for LMStudio
-- `chat_codegpt.py`: Chat interface for CodeGPT
-- `review_articles.py`: Article review and processing
-- `publishhaiku.py`: Haiku generation and publishing
-- `haikubackground.py`: Background image generation
-- `update_legacy_images.py`: Tool for updating existing images
-- `check_env.py`: Environment validation utility
-- `testchat.py`: Chat interface testing utility
+- `web_research.py`: Web application dashboard for news research and publishing
+- `nb_research.py`: Main script for fetching news, analyzing clusters, and generating articles
+- `review_articles.py`: Automated article review process with AI evaluation 
+- `publish_utils.py`: Utilities for generating haiku images and publishing articles
+- `lmstudio_config.py` / `lmstudio_chat.py`: Configuration and chat interface for LMStudio backend
+- `chat_codegpt.py`: Chat interface for CodeGPT backend
+- `haikubackground.py` / `publishhaiku.py`: Haiku generation and image creation
+- `modules/`: Additional utility modules for the web app (state management, API clients, display formatting, etc.)
 
-## Installation
+## Setup and Usage
 
-1. Clone the repository:
+1. Clone the repository and install dependencies:
    ```
-   git clone https://github.com/yourusername/nb_publisher.git
-   cd nb_publisher
-   ```
-
-2. Install the required dependencies:
-   ```
+   git clone https://github.com/yourusername/ainewsbrew.git
+   cd ainewsbrew
    pip install -r requirements.txt
    ```
 
-3. Set up environment variables:
-   Create a `.env` file in the project root and add the following variables:
+2. Set up required environment variables in a `.env` file:
    ```
+   NEWSCATCHER_API_KEY=your_newscatcher_api_key
+   PUBLISH_API_KEY=your_publish_api_key
    CODEGPT_API_KEY=your_codegpt_api_key
    CODEGPT_ORG_ID=your_codegpt_org_id
    CODEGPT_AGENT_ID=your_codegpt_agent_id
-   PUBLISH_API_KEY=your_publish_api_key
    LMSTUDIO_HOST=your_lmstudio_host  # Optional, for LMStudio backend
    ```
 
-## Usage
-
-### Using LMStudio Backend
-
-1. Start your LMStudio server with desired model
-2. Run the LMStudio version of the research script:
+3. Run the web application:
    ```
-   python nb_research_lmstudio.py
+   streamlit run web_research.py
    ```
 
-### Using CodeGPT Backend
+4. Access the web interface at `http://localhost:8501` to research news, analyze clusters, generate articles, and publish.
 
-1. Run the CodeGPT version:
-   ```
-   python nb_research.py
-   ```
+5. Alternatively, run the command-line scripts directly:
+   - Fetch news and generate articles: `python nb_research.py`
+   - Review and process articles: `python review_articles.py`
 
-### Testing and Utilities
-
-- Validate environment: `python check_env.py`
-- Test chat interfaces: `python testchat.py`
-- Update legacy images: `python update_legacy_images.py`
-
-The system will monitor the `publish.json` file for changes and automatically publish new articles.
+6. Utility scripts:
+   - Check environment setup: `python check_env.py` 
+   - Test chat interfaces: `python testchat.py`
+   - Update legacy haiku images: `python update_legacy_images.py`
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions to improve and expand the capabilities of AI News Brew are welcome! Please submit a pull request or open an issue to discuss proposed changes.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
