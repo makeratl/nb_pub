@@ -22,7 +22,7 @@ def get_news_data(search_type, query="", when="24h"):
         params = {
             "when": api_time,
             "countries": "US, CA, MX, GB",
-            "predefined_sources": "top 80 US,top 50 CA,top 20 MX,top 20 GB",
+            "predefined_sources": "top 70 US,top 50 CA,top 20 MX,top 50 GB",
             "lang": "en",
             "ranked_only": "true",
             "clustering_enabled": "true",
@@ -34,7 +34,7 @@ def get_news_data(search_type, query="", when="24h"):
         params = {
             "q": query,
             "from_": api_time,
-            "countries": "US, CA, MX, GB",
+            "countries": "US, CA, MX, GB, UA, IN, BR, FR, JP, CN, PL",
             "lang": "en",
             "ranked_only": "true",
             "clustering_enabled": "true",
