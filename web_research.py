@@ -406,23 +406,26 @@ def main():
                     
                     # Generate the article
                     with st.spinner():
-                        article_data = create_article(cluster)
-                        if article_data:
-                            st.session_state.selected_cluster = cluster
-                            st.session_state.article_data = article_data
-                            st.session_state.current_step = 1
-                            st.session_state.clusters.pop(i)
-                            st.session_state.evaluating_cluster = None
-                            
-                            # Clear the loading animation
-                            loading_placeholder.empty()
-                            
-                            st.rerun()
-                        else:
+                        try:
+                            article_data = create_article(cluster)
+                            if article_data:
+                                st.session_state.selected_cluster = cluster
+                                st.session_state.article_data = article_data
+                                st.session_state.current_step = 1
+                                st.session_state.clusters.pop(i)
+                                st.session_state.evaluating_cluster = None
+                                
+                                # Clear the loading animation
+                                loading_placeholder.empty()
+                                
+                                st.rerun()
+                            else:
+                                raise ValueError("Empty article data returned from create_article")
+                        except Exception as e:
                             # Show error in the loading placeholder
                             with loading_placeholder.container():
-                                st.error("Failed to generate article. Please try again.")
-                                time.sleep(2)  # Show error for 2 seconds
+                                st.error(f"Failed to generate article. Error: {str(e)}")
+                                time.sleep(60)  # Show error for 1 minute
                                 st.session_state.evaluating_cluster = None
                                 st.rerun()
 

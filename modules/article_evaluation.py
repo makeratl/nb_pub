@@ -30,7 +30,8 @@ def evaluate_article_with_ai(article, feedback_message=None):
             "cat": "category",
             "topic": "main topic", 
             "trend": (0-10),
-            "reasoning": "Detailed analysis with Quality Analysis:, Bias Analysis:, and Propagation Potential: sections"
+            "reasoning": "Detailed analysis with Quality Analysis:, Bias Analysis:, and Propagation Potential: sections",
+            "hashtags": "List of relevant hashtags formatted for publishing direct on social media"
         }}
         """
     else:
