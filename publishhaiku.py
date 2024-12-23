@@ -54,7 +54,7 @@ def publish_article(json_file_path, api_key):
                         print(f"Original image successfully encoded. Length: {len(image_data)} characters")
                         
                         # Encode background with haiku text
-                        image_haiku = encode_image("haikubg_with_text.png")
+                        image_haiku = encode_image("haikubg_with_text.jpg")
                         article_data['image_haiku'] = image_haiku
                         print(f"Haiku image successfully encoded. Length: {len(image_haiku)} characters")
                         break

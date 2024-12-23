@@ -11,23 +11,23 @@ def encode_image(image_path):
     """Encode an image file to base64"""
     with open(image_path, "rb") as image_file:
         encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
-        return f"data:image/png;base64,{encoded_string}"
+        return f"data:image/jpeg;base64,{encoded_string}"
 
 def generate_and_encode_images(image_path, image_with_text_path):
     # Load the generated image files
     image = Image.open("haikubg.png")
-    image_with_text = Image.open("haikubg_with_text.png")
+    image_with_text = Image.open("haikubg_with_text.jpg")
     
     # Encode the images
     buffered = BytesIO()
     image.save(buffered, format="PNG")
     encoded_image = base64.b64encode(buffered.getvalue()).decode('utf-8')
-    encoded_image = f"data:image/png;base64,{encoded_image}"
+    encoded_image = f"data:image/jpeg;base64,{encoded_image}"
     
     buffered_with_text = BytesIO()
-    image_with_text.save(buffered_with_text, format="PNG")
+    image_with_text.save(buffered_with_text, format="JPEG")
     encoded_image_with_text = base64.b64encode(buffered_with_text.getvalue()).decode('utf-8')
-    encoded_image_with_text = f"data:image/png;base64,{encoded_image_with_text}"
+    encoded_image_with_text = f"data:image/jpeg;base64,{encoded_image_with_text}"
     
     return encoded_image, encoded_image_with_text
 

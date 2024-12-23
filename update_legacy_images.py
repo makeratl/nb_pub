@@ -100,8 +100,8 @@ def process_article(api_key):
     
     # Encode both images
     if not valid_existing_image:
-        image_data = encode_image("haikubg.png")
-    image_haiku = encode_image("haikubg_with_text.png")
+        image_data = encode_image("haikubg.jpg")
+    image_haiku = encode_image("haikubg_with_text.jpg")
     
     # Update the article
     result = update_article_images(article['ID'], image_data, image_haiku, api_key)

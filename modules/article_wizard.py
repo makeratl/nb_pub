@@ -1121,7 +1121,7 @@ def display_final_review():
                 # Publish to Bluesky
                 haiku = st.session_state.publish_data.get('AIHaiku', '')
                 article_url = st.session_state.published_article_url
-                image_path = "bluesky_haikubg_with_text.png"  # Assuming the image is saved with this filename
+                image_path = "bluesky_haikubg_with_text.jpg"  # Assuming the image is saved with this filename
                 hashtags = st.session_state.evaluation.get('hashtags', '')
                 bluesky_result = publish_to_bluesky(haiku, article_url, image_path, hashtags)
                 
