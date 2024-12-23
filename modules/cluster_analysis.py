@@ -1,7 +1,5 @@
 """Cluster analysis and article generation functions"""
 import json
-import ast
-import re
 from chat_codegpt import chat_with_codegpt
 
 def analyze_cluster(cluster):
@@ -71,26 +69,41 @@ def create_article(cluster):
             if len(articles_data) >= 8:
                 break
 
-    success = False
+    prompt = f"""Create an article based on these sources with the following components:
+
+    1. Headline: 
+    - Keep it objective, clear and factual
+    - Avoid clickbait or sensationalized language
+    - Focus on informing rather than attracting clicks
+    - Use concise, straightforward language
+
+    2. Haiku:
+    - Follow traditional 5-7-5 syllable format
+    - Be clever and insightful while remaining relevant
+    - Capture the essence of the story creatively
+    - Avoid mundane or obvious statements
+
+    3. Full Story:
+    - Structure with clear paragraphs and sections
+    - Use semantic HTML tags (<p>, <h2>, etc.) for organization
+    - Avoid inline styles - keep HTML clean and semantic
+    - Include relevant quotes and attributions
+    - Maintain objective, balanced reporting
+    - Be mindful of special characters in the content that could break JSON object storage.  If double quotes are present, use single quotes instead.
+
+    4. Summary:
+    - Provide a single, concise paragraph
+    - Capture key points and significance
+    - Keep focused and avoid unnecessary details
+    - End with clear takeaway or context
+    The story should be in HTML format.
+    
+    Sources: {json.dumps(articles_data, indent=2)}"""
+
+    article_json = chat_with_codegpt(prompt)
     try:
-        article_json = chat_with_codegpt(prompt)
-        
-        if not article_json:
-            raise ValueError("Empty response from CodeGPT")
-        
-        # Safely evaluate the JSON response as a Python dictionary
-        article_data = ast.literal_eval(article_json)
-        
-        success = True
-        return article_data
-    except (SyntaxError, ValueError) as e:
-        print(f"Failed to parse CodeGPT response as JSON: {str(e)}")
-        print(f"Raw response: {article_json}")
+        return json.loads(article_json)
     except Exception as e:
-        print(f"Error generating article: {str(e)}")
-    finally:
-        if not success:
-            print(f"Selected {len(articles_data)} unique articles for cluster")
-            print(f"CodeGPT response: {article_json}")
-        
-    return None 
+        print(f"Failed to parse article JSON. Raw response:\n{article_json}")
+        print(f"Error: {str(e)}")
+        return None

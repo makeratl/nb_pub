@@ -425,7 +425,7 @@ def main():
                             # Show error in the loading placeholder
                             with loading_placeholder.container():
                                 st.error(f"Failed to generate article. Error: {str(e)}")
-                                time.sleep(60)  # Show error for 1 minute
+                                time.sleep(2)  # Show error for 1 minute
                                 st.session_state.evaluating_cluster = None
                                 st.rerun()
 
