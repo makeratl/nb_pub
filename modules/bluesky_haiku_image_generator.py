@@ -20,14 +20,13 @@ def poll_text_to_image_status(job_id):
     headers = {"Authorization": f"Bearer {api_key}"}
     start_time = time.time()
     
-    progress_bar = st.progress(0)
-    status_text = st.empty()
-    elapsed_time_placeholder = st.empty()
+    progress_container = st.container()
+    with progress_container:
+        progress_bar = st.progress(0)
+        status_text = st.empty()
     
     while True:
         elapsed_time = int(time.time() - start_time)
-        minutes, seconds = divmod(elapsed_time, 60)
-        elapsed_time_placeholder.text(f"Elapsed time: {minutes:02d}:{seconds:02d}")
         
         response = requests.get(f"https://api.horiar.com/enterprise/query/{job_id}", headers=headers)
         
@@ -36,48 +35,55 @@ def poll_text_to_image_status(job_id):
             
             if "message" in result:
                 progress_bar.progress(0)
-                status_text.text(f"Status: {result['message']}. Waiting...")
-                time.sleep(5)  # Wait for 5 seconds before checking again
+                status_text.text("🎨 Creating your Bluesky image...")
+                time.sleep(5)
             else:
                 progress_bar.progress(100)
-                status_text.text("Request completed!")
-                progress_bar.empty()
-                status_text.empty()
-                elapsed_time_placeholder.empty()
+                progress_container.empty()
                 return result
         else:
-            st.error(f"Request failed with status code {response.status_code}: {response.text}")
+            st.error("Unable to generate Bluesky image. Please try again.")
             return None
 
 def generate_image(prompt):
-    with st.spinner("Generating image..."):
+    with st.spinner(""):
         headers = {"Authorization": f"Bearer {api_key}"}
         data = {
             "prompt": prompt,
             "model_type": "normal",
             "resolution": "1024x1024 | 1:1 (Square)"
         }
+        
+        status_container = st.container()
+        with status_container:
+            st.info("🖼️ Preparing to generate your Bluesky image...")
+        
         response = requests.post("https://api.horiar.com/enterprise/text-to-image", 
                                 headers=headers, json=data)
 
         if response.status_code == 200:
             result = response.json()
             job_id = result["job_id"]
-            request_queued_placeholder = st.empty()
-            request_queued_placeholder.info(f"Request queued with job ID: {job_id}. Waiting for completion...")
             
             result = poll_text_to_image_status(job_id)
             
             if result:
-                image_url = result["image"]
-                image_response = requests.get(image_url)
-                if image_response.status_code == 200:
-                    filename = "bluesky_haikubg.png"
-                    with open(filename, "wb") as file:
-                        file.write(image_response.content)
-                    request_queued_placeholder.empty()
-                    return filename, prompt
+                try:
+                    image_url = result["output"]["image"]
+                    image_response = requests.get(image_url)
+                    if image_response.status_code == 200:
+                        filename = "bluesky_haikubg.png"
+                        with open(filename, "wb") as file:
+                            file.write(image_response.content)
+                        status_container.empty()
+                        return filename, prompt
+                except KeyError:
+                    st.error("Unable to process the generated Bluesky image. Please try again.")
+                    return None, prompt
+        else:
+            st.error("Unable to start Bluesky image generation. Please try again.")
         
+        status_container.empty()
         return None, prompt
 
 def add_text_to_image(image_path, haiku, article_date, font_path, initial_font_size=100, text_color=(255, 255, 255, 255)):
