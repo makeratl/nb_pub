@@ -17,14 +17,9 @@ def generate_image_prompt(haiku):
     prompt_request = f"Create an image prompt for a background that captures the essence of this haiku:\n{haiku}\nUse your rules for Haiku Background Prompt."
     return chat_with_codegpt(prompt_request)
 
-def poll_text_to_image_status(job_id):
+def poll_text_to_image_status(job_id, progress_container, progress_bar, status_text):
     headers = {"Authorization": f"Bearer {api_key}"}
     start_time = time.time()
-    
-    progress_container = st.container()
-    with progress_container:
-        progress_bar = st.progress(0)
-        status_text = st.empty()
     
     while True:
         elapsed_time = int(time.time() - start_time)
@@ -35,11 +30,11 @@ def poll_text_to_image_status(job_id):
             result = response.json()
             
             if "message" in result:
-                progress_bar.progress(0)
+                progress_bar.progress(0.5)  # Show 50% progress during generation
                 status_text.text("🎨 Creating your image...")
                 time.sleep(5)
             else:
-                progress_bar.progress(100)
+                progress_bar.progress(1.0)
                 progress_container.empty()
                 return result
         else:
@@ -47,45 +42,45 @@ def poll_text_to_image_status(job_id):
             return None
 
 def generate_image(prompt):
-    with st.spinner(""):
-        headers = {"Authorization": f"Bearer {api_key}"}
-        data = {
-            "prompt": prompt,
-            "model_type": "normal",
-            "resolution": "1344x768 | 16:9 (Horizontal)"
-        }
-        
-        status_container = st.container()
-        with status_container:
-            st.info("🖼️ Preparing to generate your image...")
-        
-        response = requests.post("https://api.horiar.com/enterprise/text-to-image", 
-                                headers=headers, json=data)
+    headers = {"Authorization": f"Bearer {api_key}"}
+    data = {
+        "prompt": prompt,
+        "model_type": "normal",
+        "resolution": "1344x768 | 16:9 (Horizontal)"
+    }
+    
+    progress_container = st.container()
+    with progress_container:
+        progress_bar = st.progress(0.0)
+        status_text = st.empty()
+        status_text.text("🖼️ Preparing your image...")
+    
+    response = requests.post("https://api.horiar.com/enterprise/text-to-image", 
+                            headers=headers, json=data)
 
-        if response.status_code == 200:
-            result = response.json()
-            job_id = result["job_id"]
-            
-            result = poll_text_to_image_status(job_id)
-            
-            if result:
-                try:
-                    image_url = result["output"]["image"]
-                    image_response = requests.get(image_url)
-                    if image_response.status_code == 200:
-                        filename = "haikubg.png"
-                        with open(filename, "wb") as file:
-                            file.write(image_response.content)
-                        status_container.empty()
-                        return filename, prompt
-                except KeyError:
-                    st.error("Unable to process the generated image. Please try again.")
-                    return None, prompt
-        else:
-            st.error("Unable to start image generation. Please try again.")
+    if response.status_code == 200:
+        result = response.json()
+        job_id = result["job_id"]
         
-        status_container.empty()
-        return None, prompt
+        result = poll_text_to_image_status(job_id, progress_container, progress_bar, status_text)
+        
+        if result:
+            try:
+                image_url = result["output"]["image"]
+                image_response = requests.get(image_url)
+                if image_response.status_code == 200:
+                    filename = "haikubg.png"
+                    with open(filename, "wb") as file:
+                        file.write(image_response.content)
+                    return filename, prompt
+            except KeyError:
+                st.error("Unable to process the generated image. Please try again.")
+                return None, prompt
+    else:
+        st.error("Unable to start image generation. Please try again.")
+    
+    progress_container.empty()
+    return None, prompt
 
 def add_text_to_image(image_path, haiku, ai_headline, article_date, font_path, initial_font_size=40, text_color=(255, 255, 255, 255)):
     with Image.open(image_path) as img:
