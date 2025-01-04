@@ -1118,6 +1118,23 @@ def display_final_review():
                     \nID: {article_id}
                     \nView at: [{st.session_state.published_article_url}]({st.session_state.published_article_url})""")
                 
+                # Upload images to FTP after getting article ID
+                with st.spinner("Uploading images to FTP..."):
+                    from modules.ftp_image_handler import upload_images_to_ftp
+                    try:
+                        # Use the base64 encoded images from publish_data
+                        bg_url, haiku_url = upload_images_to_ftp(
+                            article_id,
+                            st.session_state.publish_data.get('image_data'),  # Base64 encoded background image
+                            st.session_state.publish_data.get('image_haiku')  # Base64 encoded haiku image
+                        )
+                        if not bg_url or not haiku_url:
+                            st.error("Failed to upload images to FTP - no URLs returned")
+                        else:
+                            st.success("Images uploaded successfully")
+                    except Exception as e:
+                        st.error(f"Failed to upload images to FTP: {str(e)}")
+                
                 # Publish to Bluesky
                 haiku = st.session_state.publish_data.get('AIHaiku', '')
                 article_url = st.session_state.published_article_url
