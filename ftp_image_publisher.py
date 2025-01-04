@@ -3,6 +3,7 @@ import base64
 import ftplib
 import http.client
 import json
+import requests
 from io import BytesIO
 from urllib.parse import urlparse
 from dotenv import load_dotenv
@@ -109,6 +110,30 @@ def upload_to_ftp(hostname, username, password, port, remote_dir, article_id, im
                 pass
         return False
 
+def check_image_exists(article_id):
+    """Check if images already exist for the article"""
+    bg_url = f"https://fetch.ainewsbrew.com/images/{article_id}_background.jpg"
+    haiku_url = f"https://fetch.ainewsbrew.com/images/{article_id}_haiku.jpg"
+    
+    try:
+        bg_response = requests.head(bg_url)
+        haiku_response = requests.head(haiku_url)
+        
+        bg_exists = bg_response.status_code == 200
+        haiku_exists = haiku_response.status_code == 200
+        
+        if bg_exists and haiku_exists:
+            print(f"Both images already exist for article {article_id}")
+            return True
+        elif bg_exists:
+            print(f"Only background image exists for article {article_id}")
+        elif haiku_exists:
+            print(f"Only haiku image exists for article {article_id}")
+        return False
+    except Exception as e:
+        print(f"Error checking image existence: {str(e)}")
+        return False
+
 def process_article(index, api_key, ftp_config):
     """Process a single article"""
     article_data = get_article_data(index, api_key)
@@ -122,6 +147,11 @@ def process_article(index, api_key, ftp_config):
         return False
     
     print(f"\nProcessing article {article_id}: {article_data.get('AIHeadline', 'No headline')}")
+    
+    # Check if images already exist
+    if check_image_exists(article_id):
+        print(f"Skipping article {article_id}: Images already exist")
+        return True
     
     image_data = article_data.get('image_data')
     image_haiku = article_data.get('image_haiku')
@@ -175,85 +205,65 @@ def main():
         'dir': ftp_dir
     }
     
-    # Ask for processing mode
-    mode = input("Enter mode (1 for single article, 2 for batch processing): ")
+    print("\nStarting automatic batch processing...")
+    start_index = 0
+    batch_size = 100  # Process in batches of 100
     
-    if mode == "1":
-        # Single article processing
-        article_index = input("Enter article index (0 for most recent): ")
-        process_article(article_index, api_key, ftp_config)
-    elif mode == "2":
-        # Batch processing
-        start_index = 0
-        batch_size = 100  # Process in batches of 100
+    successful = 0
+    failed = 0
+    skipped = 0
+    current_index = start_index
+    empty_responses = 0  # Counter for empty responses
+    
+    while empty_responses < 3:  # Stop if we get 3 empty responses in a row
+        print(f"\n=== Processing batch starting at index {current_index} ===")
         
-        successful = 0
-        failed = 0
-        skipped = 0
-        current_index = start_index
-        empty_responses = 0  # Counter for empty responses
-        
-        print("\nStarting batch processing from index", start_index)
-        print("Will continue until no more articles are found")
-        
-        while empty_responses < 3:  # Stop if we get 3 empty responses in a row
-            print(f"\n=== Processing batch starting at index {current_index} ===")
-            
-            batch_had_data = False
-            for index in range(current_index, current_index + batch_size):
-                print(f"\n--- Processing index {index} ---")
-                try:
-                    # First check if we can get any data
-                    article_data = get_article_data(index, api_key)
-                    if not article_data:
-                        print(f"No data returned for index {index}")
-                        if not batch_had_data:
-                            empty_responses += 1
-                        continue
-                    
-                    # Reset empty responses counter if we got data
-                    empty_responses = 0
-                    batch_had_data = True
-                    
-                    # Process the article
-                    result = process_article(index, api_key, ftp_config)
-                    if result:
-                        successful += 1
-                    else:
-                        skipped += 1
-                except Exception as e:
-                    print(f"Error processing index {index}: {str(e)}")
-                    failed += 1
+        batch_had_data = False
+        for index in range(current_index, current_index + batch_size):
+            print(f"\n--- Processing index {index} ---")
+            try:
+                # First check if we can get any data
+                article_data = get_article_data(index, api_key)
+                if not article_data:
+                    print(f"No data returned for index {index}")
+                    if not batch_had_data:
+                        empty_responses += 1
+                    continue
                 
-                # Print progress
-                total_processed = successful + skipped + failed
-                print(f"\nOverall Progress:")
-                print(f"Total Processed: {total_processed}")
-                print(f"Successful: {successful}")
-                print(f"Skipped: {skipped}")
-                print(f"Failed: {failed}")
-            
-            if empty_responses >= 3:
-                print("\nNo more articles found after 3 consecutive empty responses")
-                break
+                # Reset empty responses counter if we got data
+                empty_responses = 0
+                batch_had_data = True
                 
-            current_index += batch_size
+                # Process the article
+                result = process_article(index, api_key, ftp_config)
+                if result:
+                    successful += 1
+                else:
+                    skipped += 1
+            except Exception as e:
+                print(f"Error processing index {index}: {str(e)}")
+                failed += 1
             
-            # Ask if user wants to continue to next batch
-            if batch_had_data:
-                continue_input = input(f"\nProcessed batch up to index {current_index-1}. Continue to next batch? (y/n): ")
-                if continue_input.lower() != 'y':
-                    print("\nBatch processing stopped by user")
-                    break
+            # Print progress
+            total_processed = successful + skipped + failed
+            print(f"\nOverall Progress:")
+            print(f"Total Processed: {total_processed}")
+            print(f"Successful: {successful}")
+            print(f"Skipped: {skipped}")
+            print(f"Failed: {failed}")
         
-        print("\n=== Final Statistics ===")
-        print(f"Total Processed: {successful + skipped + failed}")
-        print(f"Successful: {successful}")
-        print(f"Skipped: {skipped}")
-        print(f"Failed: {failed}")
-        print(f"Last Index Processed: {current_index - 1}")
-    else:
-        print("Invalid mode selected")
+        if empty_responses >= 3:
+            print("\nNo more articles found after 3 consecutive empty responses")
+            break
+            
+        current_index += batch_size
+    
+    print("\n=== Final Statistics ===")
+    print(f"Total Processed: {successful + skipped + failed}")
+    print(f"Successful: {successful}")
+    print(f"Skipped: {skipped}")
+    print(f"Failed: {failed}")
+    print(f"Last Index Processed: {current_index - 1}")
 
 if __name__ == "__main__":
     main() 
