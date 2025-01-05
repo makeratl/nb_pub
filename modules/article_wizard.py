@@ -846,12 +846,15 @@ def display_image_step():
             haiku = st.session_state.publish_data.get('AIHaiku', '')
             headline = st.session_state.publish_data.get('AIHeadline', '')
             article_date = st.session_state.publish_data.get('article_date', '')
+            previous_prompt = st.session_state.publish_data.get('image_prompt', '')
 
             # Generate a single prompt for both images, incorporating feedback if provided
             from modules.haiku_image_generator import generate_image_prompt
             prompt_request = f"Create an image prompt for a background that captures the essence of this haiku:\n{haiku}"
+            if previous_prompt:
+                prompt_request += f"\n\nThe previous image was generated with this prompt:\n{previous_prompt}"
             if feedback:
-                prompt_request += f"\nPlease adjust the image based on this feedback: {feedback}"
+                prompt_request += f"\n\nPlease adjust the image based on this feedback while maintaining the haiku's essence: {feedback}"
             prompt_request += "\nUse your rules for Haiku Background Prompt."
             
             image_prompt = generate_image_prompt(prompt_request)
@@ -918,6 +921,12 @@ def display_image_step():
         ("Regenerate Images", "regenerate_image", regenerate_image),
         ("Continue to Final Review", "image_continue_review", continue_to_final)
     ]
+    
+    # Show current prompt if it exists
+    current_prompt = st.session_state.publish_data.get('image_prompt', '')
+    if current_prompt:
+        with st.expander("Current Image Prompt", expanded=False):
+            st.info(current_prompt)
     
     # Add feedback input before the buttons
     st.text_area(
