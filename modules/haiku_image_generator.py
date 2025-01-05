@@ -13,8 +13,16 @@ import sys
 load_dotenv()
 api_key = os.getenv("HORIAR_API_KEY")
 
-def generate_image_prompt(haiku):
-    prompt_request = f"Create an image prompt for a background that captures the essence of this haiku:\n{haiku}\nUse your rules for Haiku Background Prompt."
+def generate_image_prompt(prompt_request):
+    """
+    Generate an image prompt based on a haiku and optional feedback.
+    
+    Args:
+        prompt_request (str): The full prompt request including haiku and optional feedback
+        
+    Returns:
+        str: The generated image prompt
+    """
     return chat_with_codegpt(prompt_request)
 
 def poll_text_to_image_status(job_id, progress_container, progress_bar, status_text):
@@ -176,11 +184,10 @@ def add_text_to_image(image_path, haiku, ai_headline, article_date, font_path, i
         img.save(output_path, "JPEG", quality=85)
         return output_path
 
-def generate_haiku_background(haiku, ai_headline, article_date):
+def generate_haiku_background(haiku, ai_headline, article_date, existing_prompt=None):
     with st.spinner("Generating haiku background..."):
-        # st.info("Consulting with Illustration...")
-        image_prompt = generate_image_prompt(haiku)
-        #st.info(f"Illustration Prompt: {image_prompt}")
+        # Use existing prompt or generate new one
+        image_prompt = existing_prompt if existing_prompt else generate_image_prompt(haiku)
         
         image_path, prompt = generate_image(image_prompt)
         
@@ -191,7 +198,6 @@ def generate_haiku_background(haiku, ai_headline, article_date):
                 st.warning(f"Font file not found at {font_path}. Using default font.")
                 font_path = None  # This will use a default font
 
-            # st.info("Adding text to the generated image...")
             final_image = add_text_to_image(image_path, haiku, ai_headline, article_date, font_path, initial_font_size=40)
             return final_image, prompt
         

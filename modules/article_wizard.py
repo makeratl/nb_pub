@@ -838,11 +838,30 @@ def display_image_step():
     trend_score = st.session_state.publish_data.get('trend', 0.0)
     
     def regenerate_image():
+        # Get user feedback if provided
+        feedback = st.session_state.get('image_feedback', '')
+        
         with st.spinner("Generating new images..."):
-            standard_image_path, image_prompt = generate_haiku_background(
-                st.session_state.publish_data.get('AIHaiku', ''),
-                st.session_state.publish_data.get('AIHeadline', ''),
-                st.session_state.publish_data.get('article_date', '')  # Pass article date
+            # Get haiku and metadata from session state
+            haiku = st.session_state.publish_data.get('AIHaiku', '')
+            headline = st.session_state.publish_data.get('AIHeadline', '')
+            article_date = st.session_state.publish_data.get('article_date', '')
+
+            # Generate a single prompt for both images, incorporating feedback if provided
+            from modules.haiku_image_generator import generate_image_prompt
+            prompt_request = f"Create an image prompt for a background that captures the essence of this haiku:\n{haiku}"
+            if feedback:
+                prompt_request += f"\nPlease adjust the image based on this feedback: {feedback}"
+            prompt_request += "\nUse your rules for Haiku Background Prompt."
+            
+            image_prompt = generate_image_prompt(prompt_request)
+            
+            # Generate standard image
+            standard_image_path, _ = generate_haiku_background(
+                haiku,
+                headline,
+                article_date,
+                image_prompt
             )
             
             if standard_image_path:
@@ -855,18 +874,19 @@ def display_image_step():
                 # Generate and store encoded images for publishing
                 encoded_standard_image, encoded_standard_image_with_text = generate_and_encode_images(
                     standard_image_path,
-                    "haikubg_with_text.png"  # Assuming this is the file path of the standard image with text
+                    "haikubg_with_text.png"
                 )
                 st.session_state.publish_data.update({
                     'image_data': encoded_standard_image,
                     'image_haiku': encoded_standard_image_with_text,
                 })
                 
-                # Generate new Bluesky image
+                # Generate new Bluesky image using the same prompt
                 bluesky_image_path, _ = generate_bluesky_haiku_background(
-                    st.session_state.publish_data.get('AIHaiku', ''),
-                    st.session_state.publish_data.get('AIHeadline', ''),
-                    st.session_state.publish_data.get('article_date', '')
+                    haiku,
+                    headline,
+                    article_date,
+                    image_prompt  # Pass the same prompt
                 )
                 
                 if bluesky_image_path:
@@ -899,6 +919,13 @@ def display_image_step():
         ("Continue to Final Review", "image_continue_review", continue_to_final)
     ]
     
+    # Add feedback input before the buttons
+    st.text_area(
+        "Image Feedback (optional)",
+        key="image_feedback",
+        help="Provide feedback to guide the image regeneration (e.g., 'make it more abstract', 'use warmer colors', etc.)"
+    )
+
     # Define color mapping functions
     def get_quality_color(score):
         if score <= 3:

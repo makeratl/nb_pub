@@ -156,9 +156,10 @@ def add_text_to_image(image_path, haiku, article_date, font_path, initial_font_s
         img.save(output_path, "JPEG", quality=85)
         return output_path
 
-def generate_bluesky_haiku_background(haiku, ai_headline, article_date):
+def generate_bluesky_haiku_background(haiku, ai_headline, article_date, existing_prompt=None):
     with st.spinner("Generating Bluesky haiku background..."):
-        image_prompt = generate_image_prompt(haiku)
+        # Use existing prompt or generate new one
+        image_prompt = existing_prompt if existing_prompt else generate_image_prompt(haiku)
         print(f"Generated image prompt: {image_prompt}")
         
         image_path, prompt = generate_image(image_prompt)
