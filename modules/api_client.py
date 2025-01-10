@@ -48,7 +48,7 @@ def get_news_data(search_type, query="", when="24h"):
         response.raise_for_status()
         return response.json()
     except Exception as e:
-        st.error(f"Error fetching news: {str(e)}")
+        print(f"Error fetching news: {str(e)}")  # Log the error
         return None
 
 def fetch_latest_headlines():
@@ -78,5 +78,5 @@ def fetch_latest_headlines():
         return json.loads(response.data.decode('utf-8')) if response.status == 200 else []
         
     except Exception as e:
-        st.error(f"Error fetching headlines: {str(e)}")
+        print(f"Error fetching headlines: {str(e)}")
         return []

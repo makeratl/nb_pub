@@ -7,6 +7,8 @@ from .utils import reset_article_state
 from .haiku_image_generator import generate_haiku_background
 from .bluesky_haiku_image_generator import generate_bluesky_haiku_background
 from .bluesky_publish import publish_to_bluesky
+from .keyword_optimizer import optimize_headline_keywords
+from .api_client import get_news_data
 import json
 import os
 import base64
@@ -191,14 +193,15 @@ def display_article_step():
     st.markdown(tags_html + "</div>", unsafe_allow_html=True)
     
     # Main content - swapped columns with adjusted ratio and styling
-    col1, col2 = st.columns([1.2, 2.6])
+    col1, col2 = st.columns([2.6, 1.2])
     
     with col1:
+        # Haiku display
         haiku_lines = st.session_state.article_data['haiku'].split('\n')
         st.markdown("""
             <style>
                 .haiku-container {
-                    background-color: #f8f9fa;
+                    background-color: #1C1C1C;
                     border: 1px solid rgba(74, 111, 165, 0.1);
                     border-radius: 8px;
                     padding: 1rem;
@@ -218,9 +221,28 @@ def display_article_step():
                 .haiku-text {
                     font-size: 0.95rem;
                     font-style: italic;
-                    color: #2c3e50;
+                    color: rgba(255, 255, 255, 0.9);
                     line-height: 1.5;
                     text-align: center;
+                }
+                .source-list {
+                    max-height: 200px;
+                    overflow-y: auto;
+                    padding-right: 10px;
+                }
+                .source-list::-webkit-scrollbar {
+                    width: 6px;
+                }
+                .source-list::-webkit-scrollbar-track {
+                    background: rgba(74, 111, 165, 0.1);
+                    border-radius: 3px;
+                }
+                .source-list::-webkit-scrollbar-thumb {
+                    background: rgba(74, 111, 165, 0.3);
+                    border-radius: 3px;
+                }
+                .source-list::-webkit-scrollbar-thumb:hover {
+                    background: rgba(74, 111, 165, 0.5);
                 }
             </style>
         """, unsafe_allow_html=True)
@@ -235,35 +257,121 @@ def display_article_step():
                 </div>
             </div>
         """, unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown("#### Summary")
-        st.markdown(st.session_state.article_data['summary'])
-        
-        with st.expander("Full Story", expanded=False):
+
+        # Full story and source articles
+        with st.expander("Full Story", expanded=True):
             st.markdown(st.session_state.article_data['story'], unsafe_allow_html=True)
             
+        # Source articles in a more compact format
         with st.expander("Source Articles", expanded=False):
+            st.markdown('<div class="source-list">', unsafe_allow_html=True)
             for article in st.session_state.selected_cluster['articles']:
-                st.markdown(f"- [{article['title']}]({article['link']}) - {article['name_source']}")
+                source_name = article['name_source']
+                title = article['title']
+                link = article['link']
+                st.markdown(f"- **{source_name}**: [{title}]({link})")
+            st.markdown('</div>', unsafe_allow_html=True)
     
-    # Custom CSS for button styling
-    st.markdown("""
-        <style>
-            div.stButton > button {
-                width: 100%;
-                padding: 0.5rem;
-                border-radius: 0.25rem;
-                background-color: #4A6FA5;
-                color: white;
-                font-weight: bold;
-                margin-bottom: 0.5rem;
-            }
-            div.stButton > button:hover {
-                background-color: #3E5E8E;
-            }
-        </style>
-    """, unsafe_allow_html=True)
+    with col2:
+        # Deep Research Options
+        st.markdown("""
+            <style>
+                .research-options {
+                    background-color: #1C1C1C;
+                    padding: 1rem;
+                    border-radius: 8px;
+                    border: 1px solid rgba(74, 111, 165, 0.2);
+                    margin-bottom: 1rem;
+                }
+                .research-header {
+                    color: #4A6FA5;
+                    font-size: 1.1em;
+                    margin-bottom: 0.5rem;
+                }
+            </style>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("### 🔍 Deep Research")
+        
+        # Show current keywords if they exist
+        if 'optimized_keywords' in st.session_state:
+            try:
+                keyword_data = json.loads(st.session_state.optimized_keywords)
+                current_keywords = keyword_data.get('keywords', '')
+            except:
+                current_keywords = st.session_state.optimized_keywords
+            
+            keywords = st.text_area(
+                "Research Keywords",
+                value=current_keywords,
+                help="Edit keywords to refine your research",
+                key="keyword_input"
+            )
+        else:
+            st.info("Generate keywords to start deeper research")
+            
+        # Time range selector
+        time_options = ["24h", "3d", "7d", "14d", "30d"]
+        selected_time = st.selectbox(
+            "Time Range",
+            time_options,
+            index=0,
+            key="deep_search_time_range"
+        )
+        
+        # Generate keywords button
+        if st.button("Generate Keywords", key="generate_keywords"):
+            with st.spinner("Optimizing headline..."):
+                # Get headline from article data
+                headline = st.session_state.article_data.get('headline', '')
+                if not headline:
+                    st.error("No headline found to generate keywords from")
+                    return
+                    
+                keywords = optimize_headline_keywords(headline)
+                if keywords:
+                    st.session_state.optimized_keywords = keywords
+                    st.success("Keywords generated!")
+                    st.rerun()
+                else:
+                    st.error("Failed to generate keywords")
+        
+        # Search button (only show if keywords exist)
+        if 'optimized_keywords' in st.session_state:
+            if st.button("Deep Research", key="search_keywords", use_container_width=True):
+                with st.spinner("Initializing deep research..."):
+                    # Get the keywords and clean them up
+                    search_keywords = st.session_state.optimized_keywords
+                    if isinstance(search_keywords, str):
+                        try:
+                            # Parse JSON if it's a string
+                            keyword_data = json.loads(search_keywords)
+                            # Extract just the keywords from the JSON object
+                            search_keywords = keyword_data.get('keywords', '').strip()
+                        except json.JSONDecodeError:
+                            # If not JSON, just use as is after cleaning
+                            search_keywords = search_keywords.strip()
+                    
+                    # Set up for topic search
+                    st.session_state.topic = search_keywords
+                    st.session_state.last_topic = search_keywords
+                    st.session_state.time_range = selected_time
+                    
+                    # Clear session state except for essential items
+                    for key in list(st.session_state.keys()):
+                        if key not in ['topic', 'time_range', 'last_topic']:
+                            del st.session_state[key]
+                    
+                    # Set search type to "Topic" and trigger search
+                    with st.spinner("Fetching news..."):
+                        news_data = get_news_data("Topic", query=search_keywords, when=selected_time)
+                        if news_data and 'clusters' in news_data:
+                            st.session_state.news_data = news_data
+                            st.session_state.is_loading_clusters = True
+                            st.session_state.clusters = []
+                            st.rerun()
+                        else:
+                            st.error("No results found. Try adjusting keywords or time range.")
 
 def review_article(article_data):
     """Review article using AI evaluation"""
@@ -430,8 +538,7 @@ def display_review_step():
             )
             if bluesky_image_path:
                 st.session_state.bluesky_image_path = bluesky_image_path
-                st.success("Initial Bluesky haiku image generated successfully!")
-                
+                    
                 encoded_bluesky_image, encoded_bluesky_image_with_text = generate_and_encode_images(
                     bluesky_image_path,
                     "bluesky_haikubg_with_text.png"
