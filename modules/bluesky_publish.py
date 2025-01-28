@@ -93,6 +93,13 @@ def publish_to_bluesky(haiku, article_url, image_path, hashtags):
         image_blob = upload_image(session, image_path)
         post_result = create_post(session, haiku, image_blob, article_url, hashtags)
         print(f"Published to Bluesky: {json.dumps(post_result, indent=2)}")
+        # Return True if we got a valid post result with an 'uri' field
+        return bool(post_result and post_result.get('uri'))
     except requests.exceptions.RequestException as e:
         print(f"Error publishing to Bluesky: {str(e)}")
-        print(f"Response Content: {e.response.content}")
+        if hasattr(e, 'response') and hasattr(e.response, 'content'):
+            print(f"Response Content: {e.response.content}")
+        return False
+    except Exception as e:
+        print(f"Unexpected error publishing to Bluesky: {str(e)}")
+        return False

@@ -9,6 +9,7 @@ from .bluesky_haiku_image_generator import generate_bluesky_haiku_background
 from .bluesky_publish import publish_to_bluesky
 from .keyword_optimizer import optimize_headline_keywords
 from .api_client import get_news_data
+from modules.instagram_publish import InstagramPublisher
 import json
 import os
 import base64
@@ -1275,20 +1276,58 @@ def display_final_review():
                             st.error("Failed to upload images to FTP - no URLs returned")
                         else:
                             st.success("Images uploaded successfully")
+                            
+                            # Now publish to social media
+                            with st.spinner("Publishing to social media..."):
+                                # Get the haiku and hashtags
+                                haiku = st.session_state.publish_data.get('AIHaiku', '')
+                                article_url = st.session_state.published_article_url
+                                hashtags = st.session_state.evaluation.get('hashtags', '')
+                                
+                                # Initialize social media status
+                                st.session_state.bluesky_success = False
+                                st.session_state.instagram_success = False
+                                
+                                # Publish to Bluesky
+                                image_path = "bluesky_haikubg_with_text.jpg"
+                                bluesky_result = publish_to_bluesky(haiku, article_url, image_path, hashtags)
+                                st.session_state.bluesky_success = bool(bluesky_result)
+                                if bluesky_result:
+                                    st.success("Article posted successfully to Bluesky!")
+                                else:
+                                    st.error("Failed to post to Bluesky")
+                                
+                                # Publish to Instagram
+                                try:
+                                    instagram = InstagramPublisher()
+                                    # Use the square Bluesky image for Instagram
+                                    image_path = "bluesky_haikubg_with_text.jpg"
+                                    
+                                    # Format Instagram caption
+                                    instagram_caption = f"""{haiku}
+
+Read more: {article_url}
+
+{hashtags}"""
+                                    
+                                    instagram_result = instagram.publish_post(image_path, instagram_caption)
+                                    st.session_state.instagram_success = bool(instagram_result)
+                                    if instagram_result:
+                                        st.success("Article posted successfully to Instagram!")
+                                    else:
+                                        st.error("Failed to post to Instagram")
+                                    
+                                except Exception as e:
+                                    st.error(f"Error posting to Instagram: {str(e)}")
+                                    st.session_state.instagram_success = False
+                    
                     except Exception as e:
                         st.error(f"Failed to upload images to FTP: {str(e)}")
                 
-                # Publish to Bluesky
-                haiku = st.session_state.publish_data.get('AIHaiku', '')
-                article_url = st.session_state.published_article_url
-                image_path = "bluesky_haikubg_with_text.jpg"  # Assuming the image is saved with this filename
-                hashtags = st.session_state.evaluation.get('hashtags', '')
-                bluesky_result = publish_to_bluesky(haiku, article_url, image_path, hashtags)
-                
-                st.session_state.bluesky_success = True
-                st.success("Article posted successfully to Bluesky!")
-                
                 st.rerun()  # Rerun to update button state
+            else:
+                st.error("Failed to publish article")
+                return
     
     # Check if the article has been published or rejected in the current session
     is_published = hasattr(st.session_state, 'publication_success') and st.session_state.publication_success
@@ -1393,9 +1432,19 @@ def display_final_review():
                                     <a href="{}" target="_blank" class="article-url">{}</a>
                                 </div>
                             </div>
-                            <div class="bluesky-status">
-                                <strong>Bluesky Post:</strong>
-                                <span class="bluesky-success">Posted successfully</span>
+                            <div class="social-status">
+                                <div class="social-platform">
+                                    <strong>Bluesky Post:</strong>
+                                    <span class="{}">
+                                        {}
+                                    </span>
+                                </div>
+                                <div class="social-platform">
+                                    <strong>Instagram Post:</strong>
+                                    <span class="{}">
+                                        {}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                         <div class="article-image">
@@ -1437,17 +1486,27 @@ def display_final_review():
                     .article-url {{
                         color: #4A6FA5;
                     }}
-                    .bluesky-status {{
+                    .social-status {{
                         margin-top: 1rem;
                     }}
-                    .bluesky-success {{
+                    .social-platform {{
+                        margin-top: 0.5rem;
+                    }}
+                    .success {{
                         color: #2ecc71;
+                    }}
+                    .error {{
+                        color: #e74c3c;
                     }}
                 </style>
             """.format(
                 st.session_state.published_article_id,
                 st.session_state.published_article_url,
                 st.session_state.published_article_url,
+                "success" if hasattr(st.session_state, 'bluesky_success') and st.session_state.bluesky_success else "error",
+                "Posted successfully" if hasattr(st.session_state, 'bluesky_success') and st.session_state.bluesky_success else "Failed to post",
+                "success" if hasattr(st.session_state, 'instagram_success') and st.session_state.instagram_success else "error",
+                "Posted successfully" if hasattr(st.session_state, 'instagram_success') and st.session_state.instagram_success else "Failed to post",
                 st.session_state.publish_data['image_haiku']
             ), unsafe_allow_html=True)
         
