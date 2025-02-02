@@ -23,7 +23,22 @@ def generate_image_prompt(prompt_request):
     Returns:
         str: The generated image prompt
     """
-    return chat_with_codegpt(prompt_request)
+    enhanced_prompt = f"""Create a news-appropriate image prompt based on this content:
+{prompt_request}
+
+Requirements for the image prompt:
+1. Must maintain journalistic integrity and news media standards
+2. Create visually engaging composition for digital platforms
+3. Avoid controversial or politically charged imagery
+4. Use abstract or metaphorical representations for sensitive topics
+5. Ensure cultural sensitivity and global appropriateness
+6. Design for text overlay compatibility
+7. Use readable color palettes that work across platforms
+8. Consider mobile-first viewing experience
+9. Balance artistic expression with professional news presentation
+
+The prompt should generate an image that enhances the news content while maintaining credibility and professionalism."""
+    return chat_with_codegpt(enhanced_prompt)
 
 def poll_text_to_image_status(job_id, progress_container, progress_bar, status_text):
     headers = {"Authorization": f"Bearer {api_key}"}
@@ -52,9 +67,9 @@ def poll_text_to_image_status(job_id, progress_container, progress_bar, status_t
 def generate_image(prompt):
     headers = {"Authorization": f"Bearer {api_key}"}
     data = {
-        "prompt": prompt,
+        "prompt": f"{prompt} | professional news media aesthetic | high quality | balanced composition | digital platform optimized",
         "model_type": "normal",
-        "resolution": "1344x768 | 16:9 (Horizontal)"
+        "resolution": "1024x1024"
     }
     
     progress_container = st.container()

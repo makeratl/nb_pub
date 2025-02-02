@@ -13,7 +13,20 @@ load_dotenv()
 api_key = os.getenv("HORIAR_API_KEY")
 
 def generate_image_prompt(haiku):
-    prompt_request = f"Create an image prompt for a background that captures the essence of this haiku:\n{haiku}\nUse your rules for Haiku Background Prompt."
+    prompt_request = f"""Create an image prompt for a news-focused social media background that captures the essence of this haiku:
+{haiku}
+
+Requirements for the image prompt:
+1. Must be suitable for news content and maintain journalistic integrity
+2. Should be visually engaging for social media feeds
+3. Avoid controversial or politically charged imagery
+4. Use abstract or metaphorical representations when dealing with sensitive topics
+5. Ensure the imagery is culturally sensitive and globally appropriate
+6. Create a balanced composition that works well with text overlay
+7. Use a color palette that maintains readability on social platforms
+8. Consider visual hierarchy for mobile viewing
+
+The prompt should focus on creating an artistic, professional background that enhances the news content without sensationalizing it."""
     return chat_with_codegpt(prompt_request)
 
 def poll_text_to_image_status(job_id, progress_container, progress_bar, status_text):
@@ -43,7 +56,7 @@ def poll_text_to_image_status(job_id, progress_container, progress_bar, status_t
 def generate_image(prompt):
     headers = {"Authorization": f"Bearer {api_key}"}
     data = {
-        "prompt": prompt,
+        "prompt": f"{prompt} | professional news media style | high quality | balanced composition | social media optimized | 1024x1024 | 1:1 (Square)",
         "model_type": "normal",
         "resolution": "1024x1024 | 1:1 (Square)"
     }

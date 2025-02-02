@@ -1,14 +1,19 @@
 import json
 import traceback
 from chat_codegpt import chat_with_codegpt
+from datetime import datetime
 
 def evaluate_article_with_ai(article, feedback_message=None):
     """Evaluate article using AI"""
     evaluation_context = article.get('evaluation_context', '')
+    current_date = datetime.now().strftime("%Y-%m-%d")
     
     if feedback_message:
         prompt = f"""
         {evaluation_context}
+        
+        Current Date Context: {current_date}
+        Please consider the temporal relevance of the article relative to today's date when evaluating its quality and propagation potential.
         
         Original Article:
         Headline: {article.get('AIHeadline', 'No headline provided')}
@@ -38,6 +43,9 @@ def evaluate_article_with_ai(article, feedback_message=None):
         prompt = f"""
         {evaluation_context}
         
+        Current Date Context: {current_date}
+        Please consider the temporal relevance of the article relative to today's date when evaluating its quality and propagation potential.
+        
         Please evaluate this news article according to the above guidelines:
         
         Headline: {article.get('AIHeadline', 'No headline provided')}
@@ -47,7 +55,7 @@ def evaluate_article_with_ai(article, feedback_message=None):
         Provide a detailed analysis covering:
         1. Quality Analysis: Evaluate based on the guidelines, focusing on source credibility and journalistic standards 
         2. Bias Analysis: Assess political lean and perspective balance
-        3. Propagation Potential: Rate shareability and public interest
+        3. Propagation Potential: Rate shareability and public interest, considering temporal relevance
         4. Hashtag recommendation: Provide a list of hashtags that are relevant to the article
         
         Return a JSON object with:
