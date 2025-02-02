@@ -4,7 +4,7 @@ from .display import get_bias_color
 from .article_evaluation import evaluate_article_with_ai
 from publish_utils import publish_article, generate_and_encode_images
 from .utils import reset_article_state
-from .haiku_image_generator import generate_haiku_background
+from .haiku_image_generator import generate_haiku_background, generate_image_prompt
 from .bluesky_haiku_image_generator import generate_bluesky_haiku_background
 from .bluesky_publish import publish_to_bluesky
 from .keyword_optimizer import optimize_headline_keywords
@@ -956,16 +956,8 @@ def display_image_step():
             article_date = st.session_state.publish_data.get('article_date', '')
             previous_prompt = st.session_state.publish_data.get('image_prompt', '')
 
-            # Generate a single prompt for both images, incorporating feedback if provided
-            from modules.haiku_image_generator import generate_image_prompt
-            prompt_request = f"Create an image prompt for a background that captures the essence of this haiku:\n{haiku}"
-            if previous_prompt:
-                prompt_request += f"\n\nThe previous image was generated with this prompt:\n{previous_prompt}"
-            if feedback:
-                prompt_request += f"\n\nPlease adjust the image based on this feedback while maintaining the haiku's essence: {feedback}"
-            prompt_request += "\nUse your rules for Haiku Background Prompt."
-            
-            image_prompt = generate_image_prompt(prompt_request)
+            # Generate a single prompt for both images
+            image_prompt = generate_image_prompt(haiku, headline)
             
             # Generate standard image
             standard_image_path, _ = generate_haiku_background(
