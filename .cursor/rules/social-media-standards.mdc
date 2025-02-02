@@ -1,0 +1,77 @@
+---
+description: Standards for implementing and maintaining social media platform integrations
+globs: ["modules/*_publish.py", "test_*.py"]
+---
+
+# Social Media Integration Standards
+
+## Platform Integration Requirements
+- Implement standard Publisher class interface
+- Handle authentication and token refresh
+- Manage rate limits and quotas
+- Support image and text content
+- Error handling and reporting
+
+## Authentication
+- Use environment variables for credentials
+- Implement token refresh mechanisms
+- Secure token storage
+- Handle authentication failures
+- Regular token validation
+
+## Content Publishing
+- Support platform-specific formats
+- Image size and format requirements
+- Character limit compliance
+- Hashtag handling
+- Link formatting
+
+## Error Handling
+- Graceful failure handling
+- Detailed error logging
+- Retry mechanisms
+- User feedback
+- Status tracking
+
+## Testing
+- Connection verification
+- Post creation testing
+- Media upload validation
+- Error scenario testing
+- Rate limit testing
+
+## Monitoring
+- Publishing success rates
+- API response times
+- Error frequency tracking
+- Token expiration monitoring
+- Usage quota tracking
+
+## Platform-Specific Guidelines
+### Instagram
+- Square image format
+- Caption formatting
+- Hashtag optimization
+- Story integration
+- Account linking
+
+### Bluesky
+- AT Protocol compliance
+- Image blob handling
+- Post formatting
+- Thread creation
+- Feed integration
+
+### Facebook
+- Page management
+- Media attachment
+- Link preview handling
+- Audience targeting
+- Engagement tracking
+
+### Threads
+- Image requirements
+- Text formatting
+- Thread creation
+- Reply handling
+- Media container management 

@@ -1,0 +1,77 @@
+---
+description: Standards for implementing user interface and experience components
+globs: ["modules/display.py", "modules/article_wizard.py"]
+---
+
+# UI/UX Standards
+
+## Streamlit Components
+- Appropriate component selection
+- Consistent layout patterns
+- State management
+- Error feedback
+- Loading indicators
+
+## Visual Design
+- Color scheme consistency
+- Typography standards
+- Spacing guidelines
+- Component styling
+- Visual hierarchy
+
+## User Flow
+- Clear navigation
+- Step indicators
+- Progress tracking
+- Error recovery
+- Status feedback
+
+## Layout Standards
+### Headers
+- Clear hierarchy
+- Consistent styling
+- Action buttons
+- Status indicators
+- Navigation elements
+
+### Content Areas
+- Clean formatting
+- Proper spacing
+- Content organization
+- Visual separation
+- Responsive design
+
+### Interactive Elements
+- Button styling
+- Input validation
+- Feedback messages
+- Loading states
+- Error handling
+
+## Performance
+- Loading optimization
+- Caching strategy
+- State management
+- Resource efficiency
+- Response times
+
+## Accessibility
+- Color contrast
+- Text readability
+- Screen reader support
+- Keyboard navigation
+- Error announcements
+
+## Error Handling
+- Clear error messages
+- Recovery options
+- User guidance
+- Status updates
+- System feedback
+
+## Responsive Design
+- Mobile compatibility
+- Layout adaptation
+- Image scaling
+- Text wrapping
+- Touch interaction 

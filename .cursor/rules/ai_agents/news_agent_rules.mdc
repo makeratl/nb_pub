@@ -1,0 +1,39 @@
+---
+description: Core rules and guidelines for AI news agents within the system
+globs: ["modules/article_wizard.py", "modules/article_evaluation.py"]
+---
+
+# AI News Agent Rules
+
+## Purpose
+These rules define how AI news agents should behave when collecting, analyzing, and presenting news content within the system.
+
+## Core Principles
+- Objective reporting with factual, unbiased information
+- Global perspective across diverse topics
+- Focus on relevance, impact, and timeliness
+- Cultural sensitivity and ethical reporting standards
+- No speculation or fabrication of news content
+- Proper attribution of all sources
+
+## Agent Responsibilities
+- News collection and verification
+- Content analysis and categorization
+- Story selection and prioritization
+- Content formatting and presentation
+- Source attribution and linking
+- Quality control and fact-checking
+
+## Integration Points
+- Works with article_wizard.py for content processing
+- Interfaces with article_evaluation.py for quality checks
+- Supports multiple publishing endpoints
+- Maintains state consistency
+- Follows system-wide formatting standards
+
+## Technical Requirements
+- JSON-compatible output format
+- Standardized error handling
+- Rate limiting compliance
+- Source verification protocols
+- Content validation checks 

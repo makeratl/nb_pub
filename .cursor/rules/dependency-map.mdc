@@ -1,0 +1,182 @@
+---
+description: Comprehensive dependency map for web_research.py and its modules
+globs: ["web_research.py", "modules/*.py"]
+---
+
+# Application Dependency Map
+
+## Core Application
+- web_research.py
+  - Primary entry point
+  - Streamlit web interface
+  - Workflow orchestration
+
+## Direct Dependencies
+### External Libraries
+- streamlit
+- python-dotenv
+- requests
+- Pillow (PIL)
+- json
+- datetime
+- pytz
+- base64
+- time
+
+### Custom Modules
+```
+web_research.py
+├── chat_codegpt.py (External AI interaction)
+└── modules/
+    ├── state.py
+    │   └── streamlit (session state management)
+    │
+    ├── api_client.py
+    │   ├── requests
+    │   ├── dotenv
+    │   └── urllib3
+    │
+    ├── display.py
+    │   ├── streamlit
+    │   ├── pandas
+    │   └── dateutil.parser
+    │
+    ├── article_wizard.py
+    │   ├── display.py
+    │   ├── article_evaluation.py
+    │   ├── publish_utils.py
+    │   ├── utils.py
+    │   ├── haiku_image_generator.py
+    │   ├── bluesky_haiku_image_generator.py
+    │   ├── bluesky_publish.py
+    │   ├── keyword_optimizer.py
+    │   └── instagram_publish.py
+    │
+    ├── utils.py
+    │   └── streamlit
+    │
+    ├── cluster_analysis.py
+    │   └── chat_codegpt
+    │
+    ├── article_evaluation.py
+    │   └── chat_codegpt
+    │
+    ├── haiku_image_generator.py
+    │   ├── chat_codegpt
+    │   ├── PIL
+    │   └── dotenv
+    │
+    ├── bluesky_haiku_image_generator.py
+    │   ├── chat_codegpt
+    │   ├── PIL
+    │   └── dotenv
+    │
+    ├── keyword_optimizer.py
+    │   └── chat_codegpt
+    │
+    ├── publish_utils.py
+    │   └── haiku_image_generator.py
+    │
+    ├── ftp_image_handler.py
+    │   └── ftplib
+    │
+    ├── bluesky_publish.py
+    │   └── requests
+    │
+    ├── facebook_publish.py
+    │   └── requests
+    │
+    ├── instagram_publish.py
+    │   └── requests
+    │
+    └── threads_publish.py
+        └── requests
+```
+
+## Required Files
+### Core Files
+1. web_research.py
+2. chat_codegpt.py (external)
+3. .env (environment configuration)
+
+### Module Files
+1. State Management
+   - modules/state.py
+
+2. Data Processing
+   - modules/api_client.py
+   - modules/cluster_analysis.py
+   - modules/article_evaluation.py
+   - modules/keyword_optimizer.py
+
+3. UI Components
+   - modules/display.py
+   - modules/utils.py
+   - modules/article_wizard.py
+
+4. Image Generation
+   - modules/haiku_image_generator.py
+   - modules/bluesky_haiku_image_generator.py
+   - modules/ftp_image_handler.py
+   - modules/fonts/ (directory)
+
+5. Publishing
+   - modules/publish_utils.py
+   - modules/bluesky_publish.py
+   - modules/facebook_publish.py
+   - modules/instagram_publish.py
+   - modules/threads_publish.py
+
+### Configuration Files
+1. .env (Required environment variables)
+   - NEWSCATCHER_API_KEY
+   - HORIAR_API_KEY
+   - BLUESKY_HANDLE
+   - BLUESKY_APP_PASSWORD
+   - INSTAGRAM_ACCESS_TOKEN
+   - INSTAGRAM_ACCOUNT_ID
+   - FACEBOOK_PAGE_ID
+   - PUBLISH_API_KEY
+
+2. Additional Resources
+   - modules/fonts/ (Font files for image generation)
+   - Any cached image files in working directory
+
+## Dependency Chain
+1. User Interface Layer
+   ```
+   web_research.py
+   ├── display.py
+   └── article_wizard.py
+   ```
+
+2. Data Processing Layer
+   ```
+   api_client.py
+   ├── cluster_analysis.py
+   └── article_evaluation.py
+   ```
+
+3. Content Generation Layer
+   ```
+   article_wizard.py
+   ├── keyword_optimizer.py
+   ├── haiku_image_generator.py
+   └── bluesky_haiku_image_generator.py
+   ```
+
+4. Publishing Layer
+   ```
+   publish_utils.py
+   ├── bluesky_publish.py
+   ├── facebook_publish.py
+   ├── instagram_publish.py
+   └── threads_publish.py
+   ```
+
+## Startup Requirements
+1. Environment setup (.env file)
+2. External API access
+3. Font directory presence
+4. Write permissions for image generation
+5. Network access for APIs 

@@ -1,0 +1,70 @@
+---
+description: Standards for implementing and using AI agents within the system
+globs: ["modules/article_wizard.py", "modules/article_evaluation.py", "modules/keyword_optimizer.py"]
+---
+
+# AI Agent Standards
+
+## Agent Types and Roles
+### News Collection Agent
+- Follow journalistic standards
+- Source verification
+- Content categorization
+- Bias detection
+- Topic clustering
+
+### Article Generation Agent
+- Story composition
+- Haiku creation
+- Headline optimization
+- Content formatting
+- Source attribution
+
+### Evaluation Agent
+- Quality assessment
+- Bias analysis
+- Fact verification
+- Content validation
+- Style checking
+
+## Implementation Guidelines
+- Clear agent responsibilities
+- Consistent output formats
+- Error handling protocols
+- Performance monitoring
+- State management
+
+## Content Standards
+- Objective reporting
+- Source attribution
+- Fact verification
+- Bias awareness
+- Cultural sensitivity
+
+## Technical Requirements
+- JSON-compatible outputs
+- Standardized error formats
+- Rate limiting compliance
+- Resource optimization
+- Logging standards
+
+## Integration Points
+- Article wizard workflow
+- Evaluation pipeline
+- Publishing system
+- Image generation
+- Social media formatting
+
+## Quality Control
+- Content validation
+- Source verification
+- Bias detection
+- Style consistency
+- Format compliance
+
+## Performance Standards
+- Response time limits
+- Resource usage caps
+- Error rate thresholds
+- Output quality metrics
+- Processing efficiency 

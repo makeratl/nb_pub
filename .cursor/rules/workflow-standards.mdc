@@ -1,0 +1,125 @@
+---
+description: Documentation of application workflows, processes, and state management
+globs: ["web_research.py", "modules/article_wizard.py", "modules/state.py"]
+---
+
+# Workflow Standards
+
+## Application States
+### Search State
+- Headlines Mode
+  - Time range selection
+  - Category filtering
+  - Pagination state
+- Topic Mode
+  - Topic input
+  - Time range
+  - Search history
+
+### Cluster Processing
+- Loading state
+- Analysis progress
+- Cluster filtering
+- Selection state
+
+### Article Wizard
+1. Article Review (Step 1)
+   - Content display
+   - Source verification
+   - Edit capabilities
+2. AI Evaluation (Step 2)
+   - Quality analysis
+   - Bias detection
+   - Feedback collection
+3. Image Generation (Step 3)
+   - Haiku visualization
+   - Style customization
+   - Preview capabilities
+4. Final Review (Step 4)
+   - Publication prep
+   - Platform selection
+   - Post scheduling
+
+## State Management
+### Session Variables
+```python
+st.session_state = {
+    'clusters': [],
+    'selected_cluster': None,
+    'article_data': None,
+    'current_step': int,
+    'evaluation': dict,
+    'topic': str,
+    'time_range': str,
+    'headline_page': int
+}
+```
+
+### State Transitions
+1. Initial Load → Search
+2. Search → Cluster Analysis
+3. Cluster Selection → Article Generation
+4. Article Review → Evaluation
+5. Evaluation → Image Generation
+6. Final Review → Publication
+
+## Process Flows
+### News Collection
+1. API Request
+2. Cluster Formation
+3. Analysis
+4. Display
+
+### Article Generation
+1. Source Analysis
+2. Content Creation
+3. Haiku Generation
+4. Quality Check
+
+### Publication Flow
+1. Final Review
+2. Image Generation
+3. Platform Formatting
+4. Multi-platform Posting
+
+## Error Recovery
+### Search Errors
+- API timeout retry
+- Invalid query handling
+- Empty results handling
+
+### Processing Errors
+- Cluster analysis recovery
+- Generation retry
+- State preservation
+
+### Publication Errors
+- Platform-specific retries
+- Image upload recovery
+- State rollback
+
+## Performance Standards
+### Response Times
+- Search: < 2 seconds
+- Cluster Analysis: < 5 seconds
+- Article Generation: < 10 seconds
+- Image Generation: < 15 seconds
+
+### Resource Usage
+- Memory management
+- API rate limiting
+- Cache utilization
+- State cleanup
+
+## User Interaction
+### Progress Indication
+- Loading spinners
+- Progress bars
+- Status messages
+- Error feedback
+
+### State Preservation
+- Session recovery
+- Work preservation
+- Error state handling
+- Navigation memory 

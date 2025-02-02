@@ -1,0 +1,126 @@
+---
+description: Documentation of data formats, API interactions, and data flow standards
+globs: ["modules/api_client.py", "modules/cluster_analysis.py", "modules/article_wizard.py"]
+---
+
+# Data Format Standards
+
+## API Response Formats
+### News API Response
+```json
+{
+    "clusters": [
+        {
+            "articles": [
+                {
+                    "title": "string",
+                    "content": "string",
+                    "name_source": "string",
+                    "link": "string"
+                }
+            ]
+        }
+    ]
+}
+```
+
+### Latest Headlines Response
+```json
+{
+    "ID": "string",
+    "AIHeadline": "string",
+    "Published": "MMM DD, YYYY",
+    "bs_p": float,
+    "topic": "string",
+    "cat": "string"
+}
+```
+
+## Internal Data Structures
+### Cluster Analysis Format
+```json
+{
+    "category": "string",
+    "subject": "string",
+    "bias": float,
+    "cluster_size": int,
+    "articles": [...]
+}
+```
+
+### Article Generation Format
+```json
+{
+    "headline": "string",
+    "haiku": "string",
+    "story": "string",
+    "summary": "string",
+    "sources": [...]
+}
+```
+
+## API Integration Standards
+### NewsCatcher API
+- Endpoint: v3-api.newscatcherapi.com
+- Authentication: x-api-token header
+- Rate Limits: Defined by plan
+- Required Parameters:
+  - when: Time range
+  - countries: Country codes
+  - lang: Language code
+  - clustering_enabled: boolean
+  - page_size: int
+
+### Social Media APIs
+#### Common Parameters
+- access_token: Authentication token
+- media_type: Content type
+- caption: Post text
+- image_url: Media URL
+
+#### Platform-Specific
+- Instagram: Square image format
+- Bluesky: AT Protocol formatting
+- Facebook: Page posting permissions
+- Threads: Container creation
+
+## Data Validation Rules
+### News Content
+- Minimum 3 articles per cluster
+- Unique title/source pairs
+- Valid bias range (-1 to 1)
+- Required source attribution
+
+### Generated Content
+- HTML-formatted story content
+- 5-7-5 syllable haiku
+- Source links preserved
+- Clean text formatting
+
+## Error Handling
+### API Errors
+- Rate limit handling
+- Authentication retry
+- Network timeout recovery
+- Invalid response handling
+
+### Data Validation
+- Missing field checks
+- Format validation
+- Type checking
+- Range validation
+
+## Caching Standards
+### News Data
+- Cache Duration: 5 minutes
+- Cache Key Format: "{search_type}:{query}:{when}"
+- Invalidation Rules:
+  - Time expiration
+  - Manual refresh
+  - Error states
+
+### Generated Content
+- Cache article evaluations
+- Store image generation prompts
+- Preserve cluster analysis
+- Maintain source mappings 

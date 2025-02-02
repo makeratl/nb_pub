@@ -1,0 +1,55 @@
+---
+description: Core technical standards and development guidelines for the AI News Brew publishing system
+globs: ["*.py", "modules/*.py", "test_*.py"]
+---
+
+# Technical Standards
+
+## Architecture Overview
+- Modular design with clear separation of concerns
+- Streamlit-based web interface
+- Multiple social media publishing endpoints
+- AI-powered content generation and evaluation
+- Image generation and manipulation capabilities
+
+## Code Organization
+- All core functionality in `modules/` directory
+- Separate modules for each social platform
+- Utility functions in dedicated modules
+- Clear separation of UI and business logic
+- Test files prefixed with `test_`
+
+## Development Standards
+- Follow PEP 8 style guidelines
+- Type hints for function parameters
+- Comprehensive docstrings
+- Error handling with appropriate logging
+- Environment variable management with dotenv
+
+## API Integration
+- Secure credential management
+- Rate limiting compliance
+- Proper error handling
+- Response validation
+- Retry mechanisms for transient failures
+
+## Testing Requirements
+- Unit tests for core functionality
+- Integration tests for API endpoints
+- Manual UI testing procedures
+- Error scenario coverage
+- Performance benchmarking
+
+## Security Standards
+- No hardcoded credentials
+- Environment variable protection
+- API key rotation procedures
+- Input validation and sanitization
+- Secure file handling practices
+
+## Performance Guidelines
+- Caching for expensive operations
+- Efficient image processing
+- Optimized API calls
+- Resource usage monitoring
+- Response time optimization 

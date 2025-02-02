@@ -1,0 +1,129 @@
+---
+description: Documentation of the main application structure, dependencies, and data flow
+globs: ["web_research.py", "modules/*.py"]
+---
+
+# Application Structure
+
+## Main Application (web_research.py)
+### Core Dependencies
+- streamlit: Web interface framework
+- modules.state: Session state management
+- modules.api_client: News data fetching
+- modules.display: UI formatting utilities
+- modules.article_wizard: Article generation workflow
+- modules.utils: Utility functions
+- chat_codegpt: AI interaction
+- modules.cluster_analysis: News clustering
+
+### Module Dependencies
+```
+web_research.py
+├── modules/
+│   ├── state.py
+│   ├── api_client.py
+│   ├── display.py
+│   ├── article_wizard.py
+│   ├── utils.py
+│   ├── cluster_analysis.py
+│   ├── article_evaluation.py
+│   ├── haiku_image_generator.py
+│   ├── bluesky_haiku_image_generator.py
+│   ├── keyword_optimizer.py
+│   └── *_publish.py (social media modules)
+```
+
+## Data Structures
+
+### News Data Format
+```json
+{
+    "clusters": [
+        {
+            "articles": [...],
+            "category": "string",
+            "subject": "string",
+            "bias": float,
+            "cluster_size": int
+        }
+    ]
+}
+```
+
+### Article Data Format
+```json
+{
+    "headline": "string",
+    "haiku": "string",
+    "story": "string",
+    "summary": "string",
+    "sources": [
+        {
+            "name_source": "string",
+            "title": "string",
+            "link": "string"
+        }
+    ]
+}
+```
+
+## State Management
+### Session State Variables
+- clusters: List of news clusters
+- selected_cluster: Currently selected cluster
+- article_data: Generated article data
+- current_step: Current wizard step (1-4)
+- evaluation: Article evaluation data
+- topic: Search topic
+- time_range: Time range for news
+- headline_page: Pagination state
+
+## UI Components
+### Main Sections
+1. Sidebar
+   - Search controls
+   - Latest headlines
+   - Category filtering
+2. Cluster View
+   - Category filtering
+   - Cluster cards
+   - Bias visualization
+3. Article Wizard
+   - Step 1: Article Review
+   - Step 2: AI Evaluation
+   - Step 3: Image Generation
+   - Step 4: Final Review
+
+## Color Scheme
+### Bias Colors
+- Far Left (-1.0 to -0.6): #2962FF
+- Left (-0.6 to -0.3): #2196F3
+- Center Left (-0.3 to -0.1): #03A9F4
+- Neutral (-0.1 to 0.1): #4A6FA5
+- Center Right (0.1 to 0.3): #FF9800
+- Right (0.3 to 0.6): #F57C00
+- Far Right (0.6 to 1.0): #E65100
+
+### Theme Colors
+- Primary Blue: #4A6FA5
+- Gold Accent: rgba(192, 160, 128, 0.95)
+- Text White: rgba(255, 255, 255, 0.95)
+- Text Dim: rgba(255, 255, 255, 0.5)
+
+## Workflow Steps
+1. News Collection
+   - Fetch from API
+   - Cluster analysis
+   - Bias detection
+2. Article Generation
+   - Source analysis
+   - Content creation
+   - Haiku generation
+3. Review & Evaluation
+   - AI evaluation
+   - Quality checks
+   - User review
+4. Publishing
+   - Image generation
+   - Social media formatting
+   - Multi-platform posting 
