@@ -1,0 +1,284 @@
+---
+description: Historical Research
+globs: 
+---
+# Historical Research Feature Documentation
+
+## Overview
+The historical research feature allows users to search through past articles using advanced search operators and filters. This feature is designed to help users find relevant historical content with precise control over their search criteria.
+
+## Search Syntax
+
+### Basic Search
+- Single keyword: `term`
+  - Matches articles containing the exact word "term"
+  - Uses word boundaries to prevent partial matches
+  - Example: `mars` matches "mars" but not "marshals"
+
+### Multiple Keywords
+- Default operator is AND: `term1,term2`
+  - Matches articles containing both terms
+  - Example: `mars,nasa` finds articles containing both "mars" AND "nasa"
+
+### Advanced Operators
+
+1. OR Operator (|)
+   - Syntax: `term1|term2`
+   - Matches articles containing either term
+   - Example: `mars|moon` finds articles about either Mars OR the Moon
+
+2. Quoted Phrases
+   - Syntax: `"exact phrase"`
+   - Matches the exact phrase as written
+   - Example: `"red planet"` finds articles with that exact phrase
+
+3. AND Operator
+   - Syntax: `term1 AND term2`
+   - Explicit AND operation
+   - Example: `mars AND rover`
+
+4. Mixed Operations
+   - Can combine different operators
+   - Example: `mars,space|nasa` finds articles about Mars AND (either space OR nasa)
+   - Comma separators act as AND operators
+   - Pipe symbols (|) create OR groups
+
+## Filters
+
+1. Time Range
+   - Options:
+     - 3 months (90d)
+     - 6 months (180d)
+     - 1 year (365d)
+     - 2 years (730d)
+     - 5 years (1825d)
+     - All time
+
+2. Category Filter
+   - Available categories:
+     - Technology
+     - Politics
+     - Science
+     - Economy
+     - World
+     - Society
+
+3. Quality Score Range
+   - Range: 0.0 to 10.0
+   - Filters articles based on their quality assessment score
+
+4. Bias Score Range
+   - Range: -1.0 to 1.0
+   - Negative values indicate left-leaning bias
+   - Positive values indicate right-leaning bias
+   - Zero indicates neutral content
+
+## Implementation Details
+
+### Search Processing
+1. Keywords are split by commas first (AND groups)
+2. Each group is processed for:
+   - OR operations (|)
+   - Quoted phrases
+   - AND operators
+   - Simple keywords
+
+### Word Boundary Matching
+- Uses MySQL REGEXP with custom word boundaries
+- Pattern: `(^|[[:space:],.]){term}([[:space:],.]|$)`
+- Ensures whole word matches only
+
+### Query Structure
+- Searches across multiple fields:
+  - topic
+  - AIHeadline
+  - AIStory
+
+### Response Format
+```json
+{
+    "status": "success",
+    "articles": [...],
+    "metadata": {
+        "totalResults": number,
+        "pageSize": number,
+        "currentPage": number,
+        "totalPages": number
+    },
+    "debug": {
+        "input": {...},
+        "processedClauses": {...},
+        "queries": {...}
+    }
+}
+```
+
+## Examples
+
+1. Basic AND Search:
+   ```
+   mars,nasa
+   ```
+   Finds articles containing both "mars" and "nasa"
+
+2. OR Groups:
+   ```
+   mars|moon,nasa
+   ```
+   Finds articles containing "nasa" AND either "mars" or "moon"
+
+3. Mixed Operators:
+   ```
+   "red planet",mars|moon,nasa
+   ```
+   Finds articles containing the exact phrase "red planet" AND (either "mars" or "moon") AND "nasa"
+
+4. With Filters:
+   - Category: Science
+   - Time Range: 1 year
+   - Quality Score: 7.0-10.0
+   - Bias Range: -0.3 to 0.3 (near neutral)
+
+## Error Handling
+- Invalid regex patterns return detailed error messages
+- Missing keywords return appropriate error responses
+- All errors include debug information for troubleshooting
+
+## Future Enhancements
+- [ ] Add NOT operator for exclusions
+- [ ] Support parentheses for complex grouping
+- [ ] Add field-specific search operators
+- [ ] Implement fuzzy matching options
+- [ ] Add sort options (relevance, date, quality score)
+
+## Feature Location
+- **Module**: `modules/article_wizard.py`
+- **UI Location**: Article Review Step, Deep Research panel
+- **Integration Point**: Below existing "Deep Research" button in the right column
+
+## Core Functionality
+
+### 1. User Interface Components
+- Historical Review button
+- Results display panel
+- Filtering/sorting options for results
+- Article preview/comparison interface
+
+### 2. Search Parameters
+- Keywords (from "Research Keywords" field)
+- Time Range (using existing time range selector)
+- Optional advanced filters:
+  - Category matching
+  - Bias score range
+  - Quality score range
+
+### 3. API Integration
+**Endpoint**: `https://fetch.ainewsbrew.com/api/v1/search`
+```python
+Request Parameters:
+{
+    "keywords": string,       # Comma-separated keywords
+    "timeRange": string,      # Time range (24h, 3d, 7d, 14d, 30d)
+    "category": string,       # Optional category filter
+    "biasRange": [min, max], # Optional bias score range
+    "qualityRange": [min, max] # Optional quality score range
+}
+
+Response Format:
+{
+    "status": string,        # Success/error status
+    "articles": [
+        {
+            "id": int,
+            "AIHeadline": string,
+            "AIStory": string,
+            "AIHaiku": string,
+            "Published": datetime,
+            "category": string,
+            "biasScore": float,
+            "qualityScore": float,
+            "topic": string
+        }
+    ],
+    "metadata": {
+        "totalResults": int,
+        "pageSize": int,
+        "currentPage": int
+    }
+}
+```
+
+### 4. Data Flow
+1. User clicks "Historical Review" button
+2. System collects:
+   - Current keywords from Research Keywords field
+   - Selected time range
+   - Optional filters
+3. API request is made to fetch.ainewsbrew.com
+4. Results are processed and displayed in expandable panel
+5. User can interact with results to:
+   - View full articles
+   - Compare with current article
+   - Extract relevant information
+
+## Implementation Phases
+
+### Phase 1: Basic Implementation
+- Add Historical Review button
+- Implement basic API integration
+- Create simple results display
+- Basic error handling
+
+### Phase 2: Enhanced Features
+- Advanced filtering options
+- Result sorting capabilities
+- Article comparison interface
+- Pagination support
+
+### Phase 3: UI/UX Improvements
+- Rich result previews
+- Interactive filtering
+- Loading states and animations
+- Enhanced error messaging
+
+## Technical Dependencies
+- Streamlit UI components
+- Requests library for API calls
+- JSON processing
+- Session state management
+
+## Session State Variables
+```python
+st.session_state.historical_results      # Stores search results
+st.session_state.historical_filters      # Stores active filters
+st.session_state.historical_page         # Current page number
+st.session_state.historical_comparison   # Comparison state
+```
+
+## Performance Considerations
+- Result caching
+- Pagination implementation
+- Lazy loading of full article content
+- API request optimization
+
+## Security Considerations
+- API key management
+- Data sanitization
+- Rate limiting
+- User input validation
+
+## Testing Strategy
+1. Unit Tests:
+   - API integration functions
+   - Data processing methods
+   - Filter logic
+
+2. Integration Tests:
+   - UI component interaction
+   - Session state management
+   - Error handling scenarios
+
+3. End-to-End Tests:
+   - Complete user workflows
+   - Performance testing
+   - Edge case handling

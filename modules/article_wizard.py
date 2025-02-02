@@ -2,7 +2,7 @@
 import streamlit as st
 from .display import get_bias_color
 from .article_evaluation import evaluate_article_with_ai
-from publish_utils import publish_article, generate_and_encode_images
+from publish_utils import publish_article, generate_and_encode_images, search_historical_articles
 from .utils import reset_article_state
 from .haiku_image_generator import generate_haiku_background, generate_image_prompt
 from .bluesky_haiku_image_generator import generate_bluesky_haiku_background
@@ -13,6 +13,7 @@ from modules.instagram_publish import InstagramPublisher
 import json
 import os
 import base64
+import requests
 
 def create_step_header(headline, buttons):
     """Create consistent header with headline and action buttons"""
@@ -374,6 +375,187 @@ def display_article_step():
                         else:
                             st.error("No results found. Try adjusting keywords or time range.")
 
+        # Create a visual separator
+        st.markdown("---")
+
+        # Historical Review section
+        st.markdown("### 📚 Historical Review")
+
+        # Historical time range options
+        historical_time_options = [
+            "3 months",
+            "6 months",
+            "1 year",
+            "2 years",
+            "5 years",
+            "All time"
+        ]
+
+        historical_time_range = st.selectbox(
+            "Historical Time Range",
+            historical_time_options,
+            index=0,  # Default to 3 months
+            key="historical_time_range"
+        )
+
+        # Convert friendly names to API parameters
+        historical_time_map = {
+            "3 months": "90d",
+            "6 months": "180d",
+            "1 year": "365d",
+            "2 years": "730d",
+            "5 years": "1825d",
+            "All time": "all"
+        }
+
+        # Use this in the API call instead of the deep research time range
+        params = {
+            "mode": "historical",
+            "keywords": keywords,
+            "timeRange": historical_time_map[historical_time_range]
+        }
+
+        # Reuse existing keywords and time range
+        keywords = st.session_state.get('keyword_input', '')
+        time_range = st.session_state.get('deep_search_time_range', '24h')
+
+        # Add advanced filters in an expander
+        with st.expander("Advanced Filters", expanded=False):
+            # Category filter
+            categories = ["All Categories", "Technology", "Politics", "Science", "Economy", "World", "Society"]
+            selected_category = st.selectbox(
+                "Category Filter",
+                categories,
+                key="historical_category_filter"
+            )
+            
+            # Bias range filter
+            bias_range = st.slider(
+                "Bias Score Range",
+                min_value=-1.0,
+                max_value=1.0,
+                value=(-1.0, 1.0),
+                step=0.1,
+                key="historical_bias_filter"
+            )
+            
+            # Quality score filter
+            quality_range = st.slider(
+                "Quality Score Range",
+                min_value=0.0,
+                max_value=10.0,
+                value=(0.0, 10.0),
+                step=0.5,
+                key="historical_quality_filter"
+            )
+
+        # Historical Review button
+        if st.button("Search Historical Articles", key="historical_review", use_container_width=True):
+            with st.spinner("Searching historical archives..."):
+                keywords = st.session_state.get('keyword_input', '')
+                if not keywords:
+                    st.error("Please enter keywords in the Research Keywords field above")
+                    return
+                    
+                # Prepare filters
+                filters = {
+                    "page": st.session_state.get('historical_page', 1),
+                    "biasRange": bias_range,
+                    "qualityRange": quality_range
+                }
+                
+                if selected_category != "All Categories":
+                    filters["category"] = selected_category
+                
+                try:
+                    # Debug: Show request parameters
+                    st.write("Debug - Request Parameters:", {
+                        "keywords": keywords,
+                        "timeRange": historical_time_map[historical_time_range],
+                        "filters": filters
+                    })
+                    
+                    # Use the new function from publish_utils
+                    results = search_historical_articles(
+                        keywords=keywords,
+                        time_range=historical_time_map[historical_time_range],
+                        filters=filters,
+                        api_key=os.environ.get("PUBLISH_API_KEY")
+                    )
+                    
+                    # Debug: Show raw response immediately
+                    st.write("Debug - Raw API Response:", results)
+                    
+                    if not results:
+                        st.error("No response received from the server")
+                        return
+                        
+                    if isinstance(results, dict):
+                        if 'error' in results:
+                            st.error(f"Search failed: {results.get('message', 'Unknown error')}")
+                            if 'debug' in results:
+                                with st.expander("Debug Information", expanded=True):
+                                    st.json(results['debug'])
+                            return
+                            
+                        if 'status' in results and results['status'] == 'success':
+                            st.session_state.historical_results = results
+                            st.session_state.historical_page = filters["page"]
+                            
+                            # Display results immediately instead of rerunning
+                            total_results = results.get('metadata', {}).get('totalResults', 0)
+                            st.markdown(f"Found {total_results} matching articles")
+                            
+                            # Create tabs for different view modes
+                            list_tab, compare_tab = st.tabs(["List View", "Compare View"])
+                            
+                            with list_tab:
+                                if 'articles' in results and results['articles']:
+                                    for article in results['articles']:
+                                        with st.container():
+                                            col1, col2 = st.columns([3, 1])
+                                            
+                                            with col1:
+                                                st.markdown(f"### {article.get('AIHeadline', 'No Title')}")
+                                                st.markdown(f"**Published:** {article.get('Published', 'No Date')}")
+                                                st.markdown(f"**Category:** {article.get('category', 'No Category')}")
+                                                
+                                                # Safely get and convert scores
+                                                quality_score = article.get('qualityScore')
+                                                bias_score = article.get('biasScore')
+                                                
+                                                if quality_score is not None and bias_score is not None:
+                                                    try:
+                                                        quality_score = float(quality_score)
+                                                        bias_score = float(bias_score)
+                                                        
+                                                        quality_color = get_quality_color(quality_score)
+                                                        bias_color = get_bias_color(bias_score)
+                                                        
+                                                        st.markdown(f"""
+                                                            <span style="color: {quality_color}">Quality: {quality_score:.1f}</span> | 
+                                                            <span style="color: {bias_color}">Bias: {bias_score:.1f}</span>
+                                                        """, unsafe_allow_html=True)
+                                                    except (ValueError, TypeError):
+                                                        st.write("Score data unavailable")
+                                            
+                                            with col2:
+                                                if 'link' in article:
+                                                    st.markdown(f"[View Article]({article['link']})")
+                                                if 'ID' in article:
+                                                    if st.button("Compare", key=f"compare_{article['ID']}"):
+                                                        st.session_state.comparison_article = article
+                                                else:
+                                                    st.info("No articles found matching your criteria")
+                        else:
+                            st.error(f"Unexpected response format: {results}")
+                    else:
+                        st.error(f"Unexpected response type: {type(results)}")
+                
+                except Exception as e:
+                    st.error(f"Failed to connect to historical search service: {str(e)}")
+                    st.exception(e)
+
 def review_article(article_data):
     """Review article using AI evaluation"""
     if not article_data:
@@ -653,7 +835,7 @@ def display_review_step():
                 color: rgba(255, 255, 255, 0.7);
             }}
             .propagation-score {{
-                color: {'#ff0000' if trend_score < 8 else 'rgba(0, 255, 0, 0.7)'};
+                color: rgba(0, 255, 0, 0.7);
             }}
         </style>
         <div class="step-header">
@@ -1104,7 +1286,7 @@ def display_image_step():
                 color: rgba(255, 255, 255, 0.7);
             }}
             .propagation-score {{
-                color: {'#ff0000' if trend_score < 8 else 'rgba(0, 255, 0, 0.7)'};
+                color: rgba(0, 255, 0, 0.7);
             }}
         </style>
         <div class="step-header">
@@ -1356,14 +1538,6 @@ Read more: {article_url}
                     margin-top: 1rem;
                     color: rgba(255, 255, 255, 0.8);
                 }
-                .rejected-card {
-                    background-color: #2c3e50;
-                    padding: 1rem;
-                    border-radius: 0.5rem;
-                    margin-top: 1rem;
-                    color: rgba(255, 255, 255, 0.8);
-                    border: 1px solid #e74c3c;
-                }
                 .rejected-text {
                     color: #e74c3c;
                 }
@@ -1532,7 +1706,7 @@ Read more: {article_url}
                 
                 # Display the article summary without saving it to the database
                 st.markdown("**Summary:**")
-                st.markdown(st.session_state.article_data.get('summary', 'No summary'))
+                st.markdown(st.session_state.publish_data.get('summary', 'No summary'))
             
             with col2:
                 st.markdown("### Publication Details")
