@@ -10,10 +10,12 @@ from .bluesky_publish import publish_to_bluesky
 from .keyword_optimizer import optimize_headline_keywords
 from .api_client import get_news_data
 from modules.instagram_publish import InstagramPublisher
+from chat_codegpt import chat_with_codegpt
 import json
 import os
 import base64
 import requests
+from datetime import datetime
 
 def create_step_header(headline, buttons):
     """Create consistent header with headline and action buttons"""
@@ -195,7 +197,7 @@ def display_article_step():
     st.markdown(tags_html + "</div>", unsafe_allow_html=True)
     
     # Main content - swapped columns with adjusted ratio and styling
-    col1, col2 = st.columns([2.6, 1.2])
+    col1, col2 = st.columns([1.3, 1.2])
     
     with col1:
         # Haiku display
@@ -455,25 +457,12 @@ def display_article_step():
                         filters["category"] = selected_category
                     
                     try:
-                        # Debug: Show request parameters
-                        with st.expander("Debug - Request Parameters", expanded=False):
-                            st.write({
-                                "keywords": keywords,
-                                "timeRange": historical_time_map[historical_time_range],
-                                "filters": filters
-                            })
-                        
-                        # Use the new function from publish_utils
                         results = search_historical_articles(
                             keywords=keywords,
                             time_range=historical_time_map[historical_time_range],
                             filters=filters,
                             api_key=os.environ.get("PUBLISH_API_KEY")
                         )
-                        
-                        # Debug: Show raw response immediately
-                        with st.expander("Debug - Raw API Response", expanded=False):
-                            st.write(results)
                         
                         if not results:
                             st.error("No response received from the server")
@@ -490,74 +479,134 @@ def display_article_step():
                             if 'status' in results and results['status'] == 'success':
                                 st.session_state.historical_results = results
                                 st.session_state.historical_page = filters["page"]
-                                
-                                # Display results immediately instead of rerunning
-                                total_results = results.get('metadata', {}).get('totalResults', 0)
-                                st.markdown(f"Found {total_results} matching articles")
-                                
-                                # Calculate estimated token count
-                                total_tokens = 0
-                                if 'articles' in results and results['articles']:
-                                    for article in results['articles']:
-                                        # Estimate tokens (rough estimate: 1 token ≈ 4 characters)
-                                        headline_tokens = len(article.get('AIHeadline', '')) // 4
-                                        story_tokens = len(article.get('AIStory', '')) // 4
-                                        # Date typically uses about 10 tokens
-                                        date_tokens = 10
-                                        total_tokens += headline_tokens + story_tokens + date_tokens
-                                
-                                st.markdown(f"Estimated token count for results: {total_tokens:,}")
-                                
-                                # Create tabs for different view modes
-                                list_tab, compare_tab = st.tabs(["List View", "Compare View"])
-                                
-                                with list_tab:
-                                    if 'articles' in results and results['articles']:
-                                        for article in results['articles']:
-                                            with st.container():
-                                                # Display article header and metadata
-                                                st.markdown(f"""
-                                                    ### {article.get('AIHeadline', 'No Title')}
-                                                    **Published:** {article.get('Published', 'No Date')}  
-                                                    **Category:** {article.get('category', 'No Category')}
-                                                """)
-                                                
-                                                # Display scores
-                                                quality_score = article.get('qualityScore')
-                                                bias_score = article.get('biasScore')
-                                                
-                                                if quality_score is not None and bias_score is not None:
-                                                    try:
-                                                        quality_score = float(quality_score)
-                                                        bias_score = float(bias_score)
-                                                        
-                                                        quality_color = get_quality_color(quality_score)
-                                                        bias_color = get_bias_color(bias_score)
-                                                        
-                                                        st.markdown(f"""
-                                                            <span style="color: {quality_color}">Quality: {quality_score:.1f}</span> | 
-                                                            <span style="color: {bias_color}">Bias: {bias_score:.1f}</span>
-                                                        """, unsafe_allow_html=True)
-                                                    except (ValueError, TypeError):
-                                                        st.write("Score data unavailable")
-                                                
-                                                # Display actions
-                                                if 'link' in article:
-                                                    st.markdown(f"[View Article]({article['link']})")
-                                                if 'ID' in article:
-                                                    if st.button("Compare", key=f"compare_{article['ID']}"):
-                                                        st.session_state.comparison_article = article
-                                                
-                                                # Add a separator between articles
-                                                st.markdown("---")
-                                    else:
-                                        st.info("No articles found matching your criteria")
-                        else:
-                            st.error(f"Unexpected response type: {type(results)}")
-                    
+                                st.rerun()
                     except Exception as e:
                         st.error(f"Failed to connect to historical search service: {str(e)}")
                         st.exception(e)
+                        return
+
+            # Display historical results and AI discussion if we have results
+            if hasattr(st.session_state, 'historical_results') and st.session_state.historical_results:
+                results = st.session_state.historical_results
+                total_results = results.get('metadata', {}).get('totalResults', 0)
+                
+                # Calculate token count for all articles
+                total_tokens = 0
+                if 'articles' in results and results['articles']:
+                    for article in results['articles']:
+                        # Estimate tokens (rough estimate: 1 token ≈ 4 characters)
+                        headline_tokens = len(article.get('AIHeadline', '')) // 4
+                        story_tokens = len(article.get('AIStory', '')) // 4
+                        date_tokens = 10  # Date typically uses about 10 tokens
+                        total_tokens += headline_tokens + story_tokens + date_tokens
+
+                # Display results summary with token count
+                st.info(f"Found {total_results} matching articles. Estimated token count for analysis: {total_tokens:,}")
+                
+                # Add AI Discussion section
+                st.markdown("### AI Discussion")
+                
+                # Initialize discussion state if not exists
+                if 'historical_discussion_message' not in st.session_state:
+                    st.session_state.historical_discussion_message = ""
+                if 'historical_discussion_response' not in st.session_state:
+                    st.session_state.historical_discussion_response = None
+                
+                # Discussion input
+                user_message = st.text_area(
+                    "Enter your question or discussion point about the historical context:",
+                    value=st.session_state.historical_discussion_message,
+                    key="discussion_input",
+                    help="Ask about patterns, trends, or specific aspects you'd like to explore"
+                )
+                
+                # Update stored message if changed
+                if user_message != st.session_state.historical_discussion_message:
+                    st.session_state.historical_discussion_message = user_message
+                
+                # Create buttons with custom CSS for horizontal layout
+                st.markdown("""
+                    <style>
+                        .horizontal-button-container {
+                            display: flex;
+                            gap: 1rem;
+                            margin: 1rem 0;
+                        }
+                        .horizontal-button {
+                            flex: 1;
+                        }
+                    </style>
+                    <div class="horizontal-button-container">
+                        <div class="horizontal-button">
+                """, unsafe_allow_html=True)
+                
+                # Discussion button
+                if st.button("Start AI Discussion", key="start_discussion", use_container_width=True):
+                    if not user_message:
+                        st.warning("Please enter a question or discussion point")
+                    else:
+                        try:
+                            with st.spinner("Analyzing historical context..."):
+                                ai_response = discuss_historical_articles(
+                                    st.session_state.article_data,
+                                    results.get('articles', []),
+                                    user_message
+                                )
+                                
+                                if ai_response and isinstance(ai_response, str) and len(ai_response.strip()) > 0:
+                                    st.session_state.historical_discussion_response = ai_response
+                                    st.markdown("""
+                                        <div class="ai-analysis">
+                                    """, unsafe_allow_html=True)
+                                    st.markdown("### AI Analysis")
+                                    st.markdown(ai_response)
+                                    st.markdown("</div>", unsafe_allow_html=True)
+                                else:
+                                    st.error("Failed to get a valid response from AI. Please try again.")
+                        except Exception as e:
+                            st.error(f"Error during AI discussion: {str(e)}")
+
+                st.markdown('</div><div class="horizontal-button">', unsafe_allow_html=True)
+                
+                # Generate Story button
+                if st.button("Generate Historical Story", key="generate_story", use_container_width=True):
+                    try:
+                        with st.spinner("Generating comprehensive story with historical context..."):
+                            story_data = generate_historical_story(
+                                st.session_state.article_data,
+                                results.get('articles', []),
+                                st.session_state.historical_discussion_message
+                            )
+                            
+                            if story_data and isinstance(story_data, dict):
+                                # Update session state with new story
+                                st.session_state.article_data.update({
+                                    'headline': story_data['AIHeadline'],
+                                    'haiku': story_data['AIHaiku'],
+                                    'story': story_data['AIStory'],
+                                    'summary': story_data['summary']
+                                })
+                                # Update citations
+                                if 'Cited' in story_data:
+                                    st.session_state.article_data['Cited'] = story_data['Cited']
+                                
+                                st.success("Generated new story incorporating historical context!")
+                                st.rerun()  # Refresh to show new story
+                            else:
+                                st.error("Failed to generate story. Please try again.")
+                    except Exception as e:
+                        st.error(f"Error generating story: {str(e)}")
+
+                st.markdown('</div></div>', unsafe_allow_html=True)
+                
+                # Display previous AI response if it exists
+                if st.session_state.historical_discussion_response:
+                    with st.expander("View Previous Analysis", expanded=False):
+                        st.markdown("""
+                            <div class="ai-analysis previous-analysis">
+                        """, unsafe_allow_html=True)
+                        st.markdown(st.session_state.historical_discussion_response)
+                        st.markdown("</div>", unsafe_allow_html=True)
 
 def review_article(article_data):
     """Review article using AI evaluation"""
@@ -1515,8 +1564,6 @@ Read more: {article_url}
         st.session_state.current_article = st.session_state.publish_data.get('AIHeadline', '')
         st.session_state.publication_success = False
         st.session_state.article_rejected = False
-        is_published = False
-        is_rejected = False
     
     if not is_published and not is_rejected:
         # Custom CSS for button styling
@@ -1764,3 +1811,186 @@ def handle_feedback():
             
             st.session_state.feedback_mode = False
             st.rerun()
+
+def discuss_historical_articles(current_article, historical_articles, user_message):
+    """Discuss historical articles with AI"""
+    try:
+        if not current_article or not historical_articles:
+            raise ValueError("Missing required article data for discussion")
+
+        # Get current date
+        current_date = datetime.now().strftime("%Y-%m-%d")
+
+        # Format historical articles data
+        historical_data = []
+        for article in historical_articles:
+            if article.get('AIHeadline') and article.get('Published'):
+                historical_data.append({
+                    "headline": article.get('AIHeadline', ''),
+                    "published_date": article.get('Published', ''),
+                    "category": article.get('category', '')
+                })
+        
+        if not historical_data:
+            raise ValueError("No valid historical articles found for discussion")
+
+        # Create prompt for AI discussion
+        prompt = f"""
+        You are analyzing a CURRENT ARTICLE in the context of historical coverage on similar topics.  Your job is to take into account both the included context and recent events and insights from your understanding of the past around similar topics.  Your feedback should be insightful and forward thinking.  You should look to offer an AI's insight into what the outcomes of these predictions might be and impacts.
+        Today's Date: {current_date}
+        
+        CURRENT ARTICLE UNDER ANALYSIS:
+        ==============================
+        Title: {current_article.get('headline', '')}
+        
+        Content:
+        {current_article.get('story', '')}
+        ==============================
+
+        HISTORICAL CONTEXT:
+        The following {len(historical_data)} articles provide historical context for analysis.
+        Note: Consider the temporal distance between these articles and today ({current_date}):
+        {json.dumps(historical_data, indent=2)}
+
+        USER QUESTION:
+        {user_message}
+
+        RESPONSE FORMAT:
+        The AI should respond to the user conversationally (with a conversational tone) as an assistance exploring the subject with the user  while considering:
+        - Deep understanding of the historical context
+        - Relevance to the current article's focus
+        - Temporal relationships between events
+        - Significant patterns or anomalies
+        - Potential implications and outcomes - provide a probability assessment score to a potential outcome (and give impact assessment)
+        - Nuetral bias and objective analysis - allowed to speak bluntly and candidly to some aspects as long as the perspective is mentioned.
+        
+        Guidelines:
+        - Respond in whatever format best serves the query
+        - Use natural organizational patterns rather than forced sections
+        - Maintain professional but engaging tone
+        - Integrate historical insights organically
+        - Focus on substance over rigid structure
+        - Allow the analysis to dictate the format
+        - Prioritize clarity and insightfulness
+        """
+
+        # Get AI response
+        response = chat_with_codegpt(prompt)
+        
+        if not response:
+            raise ValueError("Received empty response from AI")
+        elif not isinstance(response, str):
+            raise ValueError(f"Received invalid response type from AI: {type(response)}")
+        elif len(response.strip()) == 0:
+            raise ValueError("Received empty string from AI")
+            
+        return response
+
+    except ValueError as ve:
+        st.error(f"Validation Error: {str(ve)}")
+        return None
+    except Exception as e:
+        st.error(f"Error in historical discussion: {str(e)}")
+        st.exception(e)
+        return None
+
+def generate_historical_story(current_article, historical_articles, user_message):
+    """Generate a new story incorporating historical context"""
+    try:
+        if not current_article or not historical_articles:
+            raise ValueError("Missing required article data for story generation")
+
+        # Get current date
+        current_date = datetime.now().strftime("%Y-%m-%d")
+
+        # Collect all citations
+        citations = []
+        # Add current article citations
+        if st.session_state.selected_cluster and 'articles' in st.session_state.selected_cluster:
+            for i, article in enumerate(st.session_state.selected_cluster['articles'], 1):
+                citations.append([i, article['link']])
+        
+        # Add historical article citations
+        start_idx = len(citations) + 1
+        for i, article in enumerate(historical_articles, start_idx):
+            if 'link' in article:
+                citations.append([i, article['link']])
+
+        # Format historical articles data
+        historical_data = []
+        for article in historical_articles:
+            if article.get('AIHeadline') and article.get('Published'):
+                historical_data.append({
+                    "headline": article.get('AIHeadline', ''),
+                    "content": article.get('AIStory', ''),
+                    "published_date": article.get('Published', ''),
+                    "category": article.get('category', '')
+                })
+
+        # Create prompt for story generation
+        prompt = f"""
+        You are giving an AI research journalist's perspective on a news topic that incorporates both current events and recent historical context.  You job is to understand the user's question and provide a comprehensive and engaging story that incorporates both the current events and the historical context.  
+        Today's Date: {current_date}
+        
+        CURRENT ARTICLE CONTEXT:
+        =======================
+        Title: {current_article.get('headline', '')}
+        Content: {current_article.get('story', '')}
+        
+        HISTORICAL CONTEXT:
+        Articles from the past, leading up to today ({current_date}):
+        {json.dumps(historical_data, indent=2)}
+
+        USER QUESTION/DIRECTION:
+        {user_message}
+        
+        REQUIREMENTS:
+        1. Create a JSON response with the following structure:
+        {{
+            "AIHeadline": "Headline must start with 'AI Perspective:' and then an engaging and informative headline",
+            "AIHaiku": "relevant haiku in 5-7-5 format",
+            "AIStory": "full story in HTML format",
+            "summary": "brief one-paragraph summary"
+        }}
+        
+        2. Story Guidelines:
+        - Blend current developments with historical perspective
+        - Use semantic HTML tags for structure
+        - Include relevant quotes and attributions
+        - Maintain objective, balanced reporting
+        - Focus on patterns and developments over time
+        - Highlight significant changes or consistencies
+        - Consider temporal relevance to today
+        
+        3. Haiku Guidelines:
+        - Capture the essence of the story's historical significance
+        - Follow 5-7-5 syllable format
+        - Be insightful while remaining relevant
+        - Consider the current moment in time
+        
+        4. Writing Style:
+        - Professional journalistic tone
+        - Clear and engaging narrative flow
+        - Proper attribution of sources
+        - Balance between current events and historical context
+        - Emphasize temporal context and relevance to today
+        """
+
+        # Get AI response
+        response = chat_with_codegpt(prompt)
+        
+        if not response:
+            raise ValueError("Received empty response from AI")
+            
+        # Parse JSON response
+        try:
+            story_data = json.loads(response)
+            # Add citations to the story data
+            story_data['Cited'] = json.dumps(citations)
+            return story_data
+        except json.JSONDecodeError:
+            raise ValueError("Failed to parse AI response as JSON")
+
+    except Exception as e:
+        st.error(f"Error generating historical story: {str(e)}")
+        return None
