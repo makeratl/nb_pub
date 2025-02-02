@@ -679,7 +679,7 @@ function searchHistoricalArticles($keywords, $timeRange, $filters = []) {
             throw new Exception("Database connection failed");
         }
         
-        $articlesPerPage = 10;
+        $articlesPerPage = 200;
         $page = $filters['page'] ?? 1;
         $offset = ($page - 1) * $articlesPerPage;
 

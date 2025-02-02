@@ -80,11 +80,12 @@ def search_historical_articles(keywords, time_range, filters, api_key):
     try:
         conn = http.client.HTTPSConnection("fetch.ainewsbrew.com")
         
-        # URL encode the keywords
+        # URL encode all parameters
         encoded_keywords = urllib.parse.quote(keywords)
+        encoded_time_range = urllib.parse.quote(time_range)
         
         # Prepare query parameters
-        params = f"/api/index_v5.php?mode=historical&keywords={encoded_keywords}&timeRange={time_range}"
+        params = f"/api/index_v5.php?mode=historical&keywords={encoded_keywords}&timeRange={encoded_time_range}"
         
         # Prepare the filters payload
         payload = json.dumps(filters)

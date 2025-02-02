@@ -293,234 +293,236 @@ def display_article_step():
             </style>
         """, unsafe_allow_html=True)
         
-        st.markdown("### 🔍 Deep Research")
+        st.markdown("### 🔍 Research Tools")
         
-        # Show current keywords if they exist
-        if 'optimized_keywords' in st.session_state:
-            try:
-                keyword_data = json.loads(st.session_state.optimized_keywords)
-                current_keywords = keyword_data.get('keywords', '')
-            except:
-                current_keywords = st.session_state.optimized_keywords
-            
-            keywords = st.text_area(
-                "Research Keywords",
-                value=current_keywords,
-                help="Edit keywords to refine your research",
-                key="keyword_input"
-            )
-        else:
-            st.info("Generate keywords to start deeper research")
-            
-        # Time range selector
-        time_options = ["24h", "3d", "7d", "14d", "30d"]
-        selected_time = st.selectbox(
-            "Time Range",
-            time_options,
-            index=0,
-            key="deep_search_time_range"
-        )
-        
-        # Generate keywords button
-        if st.button("Generate Keywords", key="generate_keywords"):
-            with st.spinner("Optimizing headline..."):
-                # Get headline from article data
-                headline = st.session_state.article_data.get('headline', '')
-                if not headline:
-                    st.error("No headline found to generate keywords from")
-                    return
-                    
-                keywords = optimize_headline_keywords(headline)
-                if keywords:
-                    st.session_state.optimized_keywords = keywords
-                    st.success("Keywords generated!")
-                    st.rerun()
-                else:
-                    st.error("Failed to generate keywords")
-        
-        # Search button (only show if keywords exist)
-        if 'optimized_keywords' in st.session_state:
-            if st.button("Deep Research", key="search_keywords", use_container_width=True):
-                with st.spinner("Initializing deep research..."):
-                    # Get the keywords and clean them up
-                    search_keywords = st.session_state.optimized_keywords
-                    if isinstance(search_keywords, str):
-                        try:
-                            # Parse JSON if it's a string
-                            keyword_data = json.loads(search_keywords)
-                            # Extract just the keywords from the JSON object
-                            search_keywords = keyword_data.get('keywords', '').strip()
-                        except json.JSONDecodeError:
-                            # If not JSON, just use as is after cleaning
-                            search_keywords = search_keywords.strip()
-                    
-                    # Set up for topic search
-                    st.session_state.topic = search_keywords
-                    st.session_state.last_topic = search_keywords
-                    st.session_state.time_range = selected_time
-                    
-                    # Clear session state except for essential items
-                    for key in list(st.session_state.keys()):
-                        if key not in ['topic', 'time_range', 'last_topic']:
-                            del st.session_state[key]
-                    
-                    # Set search type to "Topic" and trigger search
-                    with st.spinner("Fetching news..."):
-                        news_data = get_news_data("Topic", query=search_keywords, when=selected_time)
-                        if news_data and 'clusters' in news_data:
-                            st.session_state.news_data = news_data
-                            st.session_state.is_loading_clusters = True
-                            st.session_state.clusters = []
-                            st.rerun()
-                        else:
-                            st.error("No results found. Try adjusting keywords or time range.")
-
-        # Create a visual separator
-        st.markdown("---")
-
-        # Historical Review section
-        st.markdown("### 📚 Historical Review")
-
-        # Historical time range options
-        historical_time_options = [
-            "3 months",
-            "6 months",
-            "1 year",
-            "2 years",
-            "5 years",
-            "All time"
-        ]
-
-        historical_time_range = st.selectbox(
-            "Historical Time Range",
-            historical_time_options,
-            index=0,  # Default to 3 months
-            key="historical_time_range"
-        )
-
-        # Convert friendly names to API parameters
-        historical_time_map = {
-            "3 months": "90d",
-            "6 months": "180d",
-            "1 year": "365d",
-            "2 years": "730d",
-            "5 years": "1825d",
-            "All time": "all"
-        }
-
-        # Use this in the API call instead of the deep research time range
-        params = {
-            "mode": "historical",
-            "keywords": keywords,
-            "timeRange": historical_time_map[historical_time_range]
-        }
-
-        # Reuse existing keywords and time range
-        keywords = st.session_state.get('keyword_input', '')
-        time_range = st.session_state.get('deep_search_time_range', '24h')
-
-        # Add advanced filters in an expander
-        with st.expander("Advanced Filters", expanded=False):
-            # Category filter
-            categories = ["All Categories", "Technology", "Politics", "Science", "Economy", "World", "Society"]
-            selected_category = st.selectbox(
-                "Category Filter",
-                categories,
-                key="historical_category_filter"
-            )
-            
-            # Bias range filter
-            bias_range = st.slider(
-                "Bias Score Range",
-                min_value=-1.0,
-                max_value=1.0,
-                value=(-1.0, 1.0),
-                step=0.1,
-                key="historical_bias_filter"
-            )
-            
-            # Quality score filter
-            quality_range = st.slider(
-                "Quality Score Range",
-                min_value=0.0,
-                max_value=10.0,
-                value=(0.0, 10.0),
-                step=0.5,
-                key="historical_quality_filter"
-            )
-
-        # Historical Review button
-        if st.button("Search Historical Articles", key="historical_review", use_container_width=True):
-            with st.spinner("Searching historical archives..."):
-                keywords = st.session_state.get('keyword_input', '')
-                if not keywords:
-                    st.error("Please enter keywords in the Research Keywords field above")
-                    return
-                    
-                # Prepare filters
-                filters = {
-                    "page": st.session_state.get('historical_page', 1),
-                    "biasRange": bias_range,
-                    "qualityRange": quality_range
-                }
-                
-                if selected_category != "All Categories":
-                    filters["category"] = selected_category
-                
+        # Keyword Generation Section
+        with st.container():
+            st.markdown("#### Keywords")
+            # Show current keywords if they exist
+            if 'optimized_keywords' in st.session_state:
                 try:
-                    # Debug: Show request parameters
-                    st.write("Debug - Request Parameters:", {
-                        "keywords": keywords,
-                        "timeRange": historical_time_map[historical_time_range],
-                        "filters": filters
-                    })
-                    
-                    # Use the new function from publish_utils
-                    results = search_historical_articles(
-                        keywords=keywords,
-                        time_range=historical_time_map[historical_time_range],
-                        filters=filters,
-                        api_key=os.environ.get("PUBLISH_API_KEY")
-                    )
-                    
-                    # Debug: Show raw response immediately
-                    st.write("Debug - Raw API Response:", results)
-                    
-                    if not results:
-                        st.error("No response received from the server")
+                    keyword_data = json.loads(st.session_state.optimized_keywords)
+                    current_keywords = keyword_data.get('keywords', '')
+                except:
+                    current_keywords = st.session_state.optimized_keywords
+                
+                keywords = st.text_area(
+                    "Research Keywords",
+                    value=current_keywords,
+                    help="Edit keywords to refine your research",
+                    key="keyword_input"
+                )
+            else:
+                st.info("Generate keywords to start research")
+            
+            # Generate keywords button
+            if st.button("Generate Keywords", key="generate_keywords"):
+                with st.spinner("Optimizing headline..."):
+                    headline = st.session_state.article_data.get('headline', '')
+                    if not headline:
+                        st.error("No headline found to generate keywords from")
                         return
                         
-                    if isinstance(results, dict):
-                        if 'error' in results:
-                            st.error(f"Search failed: {results.get('message', 'Unknown error')}")
-                            if 'debug' in results:
-                                with st.expander("Debug Information", expanded=True):
-                                    st.json(results['debug'])
+                    keywords = optimize_headline_keywords(headline)
+                    if keywords:
+                        st.session_state.optimized_keywords = keywords
+                        st.success("Keywords generated!")
+                        st.rerun()
+                    else:
+                        st.error("Failed to generate keywords")
+
+        st.markdown("---")
+
+        # Research Type Tabs
+        current_tab, historical_tab = st.tabs(["Current Context", "Historical Research"])
+
+        with current_tab:
+            st.markdown("#### Additional Context")
+            # Time range selector for current context
+            time_options = ["24h", "3d", "7d", "14d", "30d"]
+            selected_time = st.selectbox(
+                "Time Range",
+                time_options,
+                index=0,
+                key="current_context_time_range"
+            )
+
+            # Search button for current context
+            if 'optimized_keywords' in st.session_state:
+                if st.button("Find Additional Context", key="search_current_context", use_container_width=True):
+                    with st.spinner("Searching for additional context..."):
+                        search_keywords = st.session_state.optimized_keywords
+                        if isinstance(search_keywords, str):
+                            try:
+                                keyword_data = json.loads(search_keywords)
+                                search_keywords = keyword_data.get('keywords', '').strip()
+                            except json.JSONDecodeError:
+                                search_keywords = search_keywords.strip()
+                        
+                        st.session_state.topic = search_keywords
+                        st.session_state.last_topic = search_keywords
+                        st.session_state.time_range = selected_time
+                        
+                        for key in list(st.session_state.keys()):
+                            if key not in ['topic', 'time_range', 'last_topic']:
+                                del st.session_state[key]
+                        
+                        with st.spinner("Fetching news..."):
+                            news_data = get_news_data("Topic", query=search_keywords, when=selected_time)
+                            if news_data and 'clusters' in news_data:
+                                st.session_state.news_data = news_data
+                                st.session_state.is_loading_clusters = True
+                                st.session_state.clusters = []
+                                st.rerun()
+                            else:
+                                st.error("No results found. Try adjusting keywords or time range.")
+
+        with historical_tab:
+            st.markdown("#### Historical Research")
+            # Historical time range options
+            historical_time_options = [
+                "3 months",
+                "6 months",
+                "1 year",
+                "2 years",
+                "5 years",
+                "All time"
+            ]
+
+            historical_time_range = st.selectbox(
+                "Historical Time Range",
+                historical_time_options,
+                index=0,
+                key="historical_time_range"
+            )
+
+            # Convert friendly names to API parameters
+            historical_time_map = {
+                "3 months": "90d",
+                "6 months": "180d",
+                "1 year": "365d",
+                "2 years": "730d",
+                "5 years": "1825d",
+                "All time": "all"
+            }
+
+            # Add advanced filters in an expander
+            with st.expander("Advanced Filters", expanded=False):
+                # Category filter
+                categories = ["All Categories", "Technology", "Politics", "Science", "Economy", "World", "Society"]
+                selected_category = st.selectbox(
+                    "Category Filter",
+                    categories,
+                    key="historical_category_filter"
+                )
+                
+                # Bias range filter
+                bias_range = st.slider(
+                    "Bias Score Range",
+                    min_value=-1.0,
+                    max_value=1.0,
+                    value=(-1.0, 1.0),
+                    step=0.1,
+                    key="historical_bias_filter"
+                )
+                
+                # Quality score filter
+                quality_range = st.slider(
+                    "Quality Score Range",
+                    min_value=0.0,
+                    max_value=10.0,
+                    value=(0.0, 10.0),
+                    step=0.5,
+                    key="historical_quality_filter"
+                )
+
+            # Historical Review button
+            if st.button("Search Historical Articles", key="historical_review", use_container_width=True):
+                with st.spinner("Searching historical archives..."):
+                    keywords = st.session_state.get('keyword_input', '')
+                    if not keywords:
+                        st.error("Please enter keywords in the Research Keywords field above")
+                        return
+                    
+                    # Prepare filters
+                    filters = {
+                        "page": st.session_state.get('historical_page', 1),
+                        "biasRange": bias_range,
+                        "qualityRange": quality_range
+                    }
+                    
+                    if selected_category != "All Categories":
+                        filters["category"] = selected_category
+                    
+                    try:
+                        # Debug: Show request parameters
+                        with st.expander("Debug - Request Parameters", expanded=False):
+                            st.write({
+                                "keywords": keywords,
+                                "timeRange": historical_time_map[historical_time_range],
+                                "filters": filters
+                            })
+                        
+                        # Use the new function from publish_utils
+                        results = search_historical_articles(
+                            keywords=keywords,
+                            time_range=historical_time_map[historical_time_range],
+                            filters=filters,
+                            api_key=os.environ.get("PUBLISH_API_KEY")
+                        )
+                        
+                        # Debug: Show raw response immediately
+                        with st.expander("Debug - Raw API Response", expanded=False):
+                            st.write(results)
+                        
+                        if not results:
+                            st.error("No response received from the server")
                             return
                             
-                        if 'status' in results and results['status'] == 'success':
-                            st.session_state.historical_results = results
-                            st.session_state.historical_page = filters["page"]
-                            
-                            # Display results immediately instead of rerunning
-                            total_results = results.get('metadata', {}).get('totalResults', 0)
-                            st.markdown(f"Found {total_results} matching articles")
-                            
-                            # Create tabs for different view modes
-                            list_tab, compare_tab = st.tabs(["List View", "Compare View"])
-                            
-                            with list_tab:
+                        if isinstance(results, dict):
+                            if 'error' in results:
+                                st.error(f"Search failed: {results.get('message', 'Unknown error')}")
+                                if 'debug' in results:
+                                    with st.expander("Debug Information", expanded=False):
+                                        st.json(results['debug'])
+                                return
+                                
+                            if 'status' in results and results['status'] == 'success':
+                                st.session_state.historical_results = results
+                                st.session_state.historical_page = filters["page"]
+                                
+                                # Display results immediately instead of rerunning
+                                total_results = results.get('metadata', {}).get('totalResults', 0)
+                                st.markdown(f"Found {total_results} matching articles")
+                                
+                                # Calculate estimated token count
+                                total_tokens = 0
                                 if 'articles' in results and results['articles']:
                                     for article in results['articles']:
-                                        with st.container():
-                                            col1, col2 = st.columns([3, 1])
-                                            
-                                            with col1:
-                                                st.markdown(f"### {article.get('AIHeadline', 'No Title')}")
-                                                st.markdown(f"**Published:** {article.get('Published', 'No Date')}")
-                                                st.markdown(f"**Category:** {article.get('category', 'No Category')}")
+                                        # Estimate tokens (rough estimate: 1 token ≈ 4 characters)
+                                        headline_tokens = len(article.get('AIHeadline', '')) // 4
+                                        story_tokens = len(article.get('AIStory', '')) // 4
+                                        # Date typically uses about 10 tokens
+                                        date_tokens = 10
+                                        total_tokens += headline_tokens + story_tokens + date_tokens
+                                
+                                st.markdown(f"Estimated token count for results: {total_tokens:,}")
+                                
+                                # Create tabs for different view modes
+                                list_tab, compare_tab = st.tabs(["List View", "Compare View"])
+                                
+                                with list_tab:
+                                    if 'articles' in results and results['articles']:
+                                        for article in results['articles']:
+                                            with st.container():
+                                                # Display article header and metadata
+                                                st.markdown(f"""
+                                                    ### {article.get('AIHeadline', 'No Title')}
+                                                    **Published:** {article.get('Published', 'No Date')}  
+                                                    **Category:** {article.get('category', 'No Category')}
+                                                """)
                                                 
-                                                # Safely get and convert scores
+                                                # Display scores
                                                 quality_score = article.get('qualityScore')
                                                 bias_score = article.get('biasScore')
                                                 
@@ -538,23 +540,24 @@ def display_article_step():
                                                         """, unsafe_allow_html=True)
                                                     except (ValueError, TypeError):
                                                         st.write("Score data unavailable")
-                                            
-                                            with col2:
+                                                
+                                                # Display actions
                                                 if 'link' in article:
                                                     st.markdown(f"[View Article]({article['link']})")
                                                 if 'ID' in article:
                                                     if st.button("Compare", key=f"compare_{article['ID']}"):
                                                         st.session_state.comparison_article = article
-                                                else:
-                                                    st.info("No articles found matching your criteria")
+                                                
+                                                # Add a separator between articles
+                                                st.markdown("---")
+                                    else:
+                                        st.info("No articles found matching your criteria")
                         else:
-                            st.error(f"Unexpected response format: {results}")
-                    else:
-                        st.error(f"Unexpected response type: {type(results)}")
-                
-                except Exception as e:
-                    st.error(f"Failed to connect to historical search service: {str(e)}")
-                    st.exception(e)
+                            st.error(f"Unexpected response type: {type(results)}")
+                    
+                    except Exception as e:
+                        st.error(f"Failed to connect to historical search service: {str(e)}")
+                        st.exception(e)
 
 def review_article(article_data):
     """Review article using AI evaluation"""
