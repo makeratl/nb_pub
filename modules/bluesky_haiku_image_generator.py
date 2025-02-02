@@ -12,8 +12,11 @@ import streamlit as st
 load_dotenv()
 api_key = os.getenv("HORIAR_API_KEY")
 
-def generate_image_prompt(haiku):
-    prompt_request = f"""Create an image prompt for a news-focused social media background that captures the essence of this haiku:
+def generate_image_prompt(haiku, ai_headline):
+    prompt_request = f"""Create an image prompt for a news-focused social media background that captures both this headline and its accompanying haiku:
+
+Headline: {ai_headline}
+Haiku:
 {haiku}
 
 Requirements for the image prompt:
@@ -26,7 +29,7 @@ Requirements for the image prompt:
 7. Use a color palette that maintains readability on social platforms
 8. Consider visual hierarchy for mobile viewing
 
-The prompt should focus on creating an artistic, professional background that enhances the news content without sensationalizing it."""
+The prompt should focus on creating an artistic, professional background that enhances both the headline and haiku without sensationalizing the news content."""
     return chat_with_codegpt(prompt_request)
 
 def poll_text_to_image_status(job_id, progress_container, progress_bar, status_text):
@@ -172,7 +175,7 @@ def add_text_to_image(image_path, haiku, article_date, font_path, initial_font_s
 def generate_bluesky_haiku_background(haiku, ai_headline, article_date, existing_prompt=None):
     with st.spinner("Generating Bluesky haiku background..."):
         # Use existing prompt or generate new one
-        image_prompt = existing_prompt if existing_prompt else generate_image_prompt(haiku)
+        image_prompt = existing_prompt if existing_prompt else generate_image_prompt(haiku, ai_headline)
         print(f"Generated image prompt: {image_prompt}")
         
         image_path, prompt = generate_image(image_prompt)

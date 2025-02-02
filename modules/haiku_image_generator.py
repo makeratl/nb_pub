@@ -13,18 +13,22 @@ import sys
 load_dotenv()
 api_key = os.getenv("HORIAR_API_KEY")
 
-def generate_image_prompt(prompt_request):
+def generate_image_prompt(haiku, ai_headline):
     """
-    Generate an image prompt based on a haiku and optional feedback.
+    Generate an image prompt based on a haiku and headline.
     
     Args:
-        prompt_request (str): The full prompt request including haiku and optional feedback
+        haiku (str): The haiku text
+        ai_headline (str): The AI-generated headline
         
     Returns:
         str: The generated image prompt
     """
-    enhanced_prompt = f"""Create a news-appropriate image prompt based on this content:
-{prompt_request}
+    prompt_request = f"""Create a news-appropriate image prompt based on this headline and haiku:
+
+Headline: {ai_headline}
+Haiku:
+{haiku}
 
 Requirements for the image prompt:
 1. Must maintain journalistic integrity and news media standards
@@ -37,8 +41,8 @@ Requirements for the image prompt:
 8. Consider mobile-first viewing experience
 9. Balance artistic expression with professional news presentation
 
-The prompt should generate an image that enhances the news content while maintaining credibility and professionalism."""
-    return chat_with_codegpt(enhanced_prompt)
+The prompt should generate an image that enhances both the headline and haiku while maintaining credibility and professionalism."""
+    return chat_with_codegpt(prompt_request)
 
 def poll_text_to_image_status(job_id, progress_container, progress_bar, status_text):
     headers = {"Authorization": f"Bearer {api_key}"}
@@ -202,7 +206,7 @@ def add_text_to_image(image_path, haiku, ai_headline, article_date, font_path, i
 def generate_haiku_background(haiku, ai_headline, article_date, existing_prompt=None):
     with st.spinner("Generating haiku background..."):
         # Use existing prompt or generate new one
-        image_prompt = existing_prompt if existing_prompt else generate_image_prompt(haiku)
+        image_prompt = existing_prompt if existing_prompt else generate_image_prompt(haiku, ai_headline)
         
         image_path, prompt = generate_image(image_prompt)
         
@@ -221,7 +225,7 @@ def generate_haiku_background(haiku, ai_headline, article_date, existing_prompt=
 def generate_haiku_background_with_horiar(haiku, ai_headline, article_date):
     with st.spinner("Generating haiku background with Horiar..."):
         # st.info("Consulting with Illustration...")
-        image_prompt = generate_image_prompt(haiku)
+        image_prompt = generate_image_prompt(haiku, ai_headline)
         #st.info(f"Illustration Prompt: {image_prompt}")
         
         image_path, prompt = generate_image(image_prompt)
