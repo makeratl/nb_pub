@@ -24,7 +24,28 @@ def generate_image_prompt(haiku, ai_headline):
     Returns:
         str: The generated image prompt
     """
-    prompt_request = f"""Create a news-appropriate image prompt based on this headline and haiku:
+    # Check if this is an AI Perspective piece
+    if ai_headline.startswith("AI Perspective:"):
+        prompt_request = f"""Create an image prompt featuring a retro 1960s-style robot newscaster delivering the story, based on this AI Perspective headline and haiku:
+
+Headline: {ai_headline}
+Haiku:
+{haiku}
+
+Requirements for the image prompt:
+1. Must feature a 1960s-style robot newscaster as the main subject
+2. Robot should be positioned behind a classic news desk/anchor position
+3. Use retro broadcast studio elements (old cameras, studio lights, broadcast equipment)
+4. Include a news backdrop behind the robot that relates to the headline topic
+5. Create a vintage television news atmosphere
+6. Design for text overlay compatibility
+7. Use warm, vintage color palette reminiscent of 1960s TV broadcasts
+8. Add period-appropriate broadcast graphics or news tickers
+9. Robot should have classic 1960s design elements (chrome finish, antenna, dials, vacuum tubes)
+
+The prompt should generate an image that shows a retro robot news anchor delivering the story in classic 1960s broadcast style, with relevant story elements visible in the backdrop."""
+    else:
+        prompt_request = f"""Create a news-appropriate image prompt based on this headline and haiku:
 
 Headline: {ai_headline}
 Haiku:

@@ -1380,7 +1380,6 @@ def display_image_step():
             }
             .rejected-text {
                 color: #e74c3c;
-                text-decoration: line-through;
             }
         </style>
     """, unsafe_allow_html=True)
@@ -1465,6 +1464,12 @@ def display_image_step():
 
 def display_final_review():
     """Display final review before publication"""
+    # Ensure we have publish data
+    if not st.session_state.publish_data:
+        st.error("No publication data available")
+        reset_article_state()
+        return
+
     headline = st.session_state.publish_data.get('AIHeadline', '')
     category = st.session_state.publish_data.get('cat', 'Unknown')
     quality_score = st.session_state.publish_data.get('qas', 0)
@@ -1556,232 +1561,220 @@ Read more: {article_url}
                 return
     
     # Check if the article has been published or rejected in the current session
-    is_published = hasattr(st.session_state, 'publication_success') and st.session_state.publication_success
-    is_rejected = hasattr(st.session_state, 'article_rejected') and st.session_state.article_rejected
+    is_published = st.session_state.get('publication_success', False)
+    is_rejected = st.session_state.get('article_rejected', False)
     
-    # Reset the publication success and rejection flags for the current article
-    if 'current_article' not in st.session_state or st.session_state.current_article != st.session_state.publish_data.get('AIHeadline', ''):
-        st.session_state.current_article = st.session_state.publish_data.get('AIHeadline', '')
-        st.session_state.publication_success = False
-        st.session_state.article_rejected = False
+    # Custom CSS for button styling
+    st.markdown("""
+        <style>
+            div.stButton > button {
+                width: 100%;
+                padding: 0.5rem;
+                border-radius: 0.25rem;
+                background-color: #4A6FA5;
+                color: white;
+                font-weight: bold;
+                margin-bottom: 0.5rem;
+            }
+            div.stButton > button:hover {
+                background-color: #3E5E8E;
+            }
+            .published-card {
+                background-color: #2c3e50;
+                padding: 1rem;
+                border-radius: 0.5rem;
+                margin-top: 1rem;
+                color: rgba(255, 255, 255, 0.8);
+            }
+            .rejected-text {
+                color: #e74c3c;
+            }
+            .button-container {
+                display: flex;
+                gap: 1rem;
+                margin-top: 1rem;
+            }
+            .button-container > div {
+                flex: 1;
+            }
+        </style>
+    """, unsafe_allow_html=True)
     
-    if not is_published and not is_rejected:
-        # Custom CSS for button styling
+    if is_rejected:
         st.markdown("""
-            <style>
-                div.stButton > button {
-                    width: 100%;
-                    padding: 0.5rem;
-                    border-radius: 0.25rem;
-                    background-color: #4A6FA5;
-                    color: white;
-                    font-weight: bold;
-                    margin-bottom: 0.5rem;
-                }
-                div.stButton > button:hover {
-                    background-color: #3E5E8E;
-                }
-                .published-card {
-                    background-color: #2c3e50;
-                    padding: 1rem;
-                    border-radius: 0.5rem;
-                    margin-top: 1rem;
-                    color: rgba(255, 255, 255, 0.8);
-                }
-                .rejected-text {
-                    color: #e74c3c;
-                }
-            </style>
-        """, unsafe_allow_html=True)
+            <div class="rejected-card">
+                <h3 class="rejected-text">Article Rejected</h3>
+                <p>The article has been rejected and will not be published.</p>
+                <div style="margin-top: 1rem;">
+                    <strong>Headline:</strong>
+                    <p class="rejected-text">{}</p>
+                </div>
+            </div>
+        """.format(
+            st.session_state.publish_data.get('AIHeadline', 'No headline')
+        ), unsafe_allow_html=True)
         
-        # Create columns for buttons
-        cols = st.columns(2)
-        
-        with cols[0]:
-            if st.button("Publish Article", key="final_review_publish"):
-                publish_article_action()
-        
-        with cols[1]:
-            if st.button("Cancel Publication", key="final_review_cancel"):
-                st.session_state.article_rejected = True
-                st.rerun()
-        
-        st.markdown("</div></div>", unsafe_allow_html=True)
-    
-    if not st.session_state.publish_data:
-        st.error("No publication data available")
+        # Reset article state after displaying the rejection message
         reset_article_state()
         return
     
-    try:
-        if st.session_state.article_rejected:
-            st.markdown("""
-                <div class="rejected-card">
-                    <h3 class="rejected-text">Article Rejected</h3>
-                    <p>The article has been rejected and will not be published.</p>
-                    <div style="margin-top: 1rem;">
-                        <strong>Headline:</strong>
-                        <p class="rejected-text">{}</p>
-                    </div>
-                </div>
-            """.format(
-                st.session_state.publish_data.get('AIHeadline', 'No headline')
-            ), unsafe_allow_html=True)
-            
-            # Reset article state after displaying the rejection message
-            reset_article_state()
-        
-        elif hasattr(st.session_state, 'publication_success') and st.session_state.publication_success:
-            st.markdown("""
-                <div class="published-card">
-                    <div style="display: flex; align-items: center;">
-                        <div style="flex: 1;">
-                            <h3>Article Published Successfully!</h3>
-                            <p>Your article has been published to AI News Brew.</p>
-                            <div class="article-links">
-                                <div>
-                                    <strong>Article ID:</strong> 
-                                    <span class="article-id">{}</span>
-                                </div>
-                                <div>
-                                    <strong>View Article:</strong>
-                                    <a href="{}" target="_blank" class="article-url">{}</a>
-                                </div>
+    elif is_published:
+        st.markdown("""
+            <div class="published-card">
+                <div style="display: flex; align-items: center;">
+                    <div style="flex: 1;">
+                        <h3>Article Published Successfully!</h3>
+                        <p>Your article has been published to AI News Brew.</p>
+                        <div class="article-links">
+                            <div>
+                                <strong>Article ID:</strong> 
+                                <span class="article-id">{}</span>
                             </div>
-                            <div class="social-status">
-                                <div class="social-platform">
-                                    <strong>Bluesky Post:</strong>
-                                    <span class="{}">
-                                        {}
-                                    </span>
-                                </div>
-                                <div class="social-platform">
-                                    <strong>Instagram Post:</strong>
-                                    <span class="{}">
-                                        {}
-                                    </span>
-                                </div>
+                            <div>
+                                <strong>View Article:</strong>
+                                <a href="{}" target="_blank" class="article-url">{}</a>
                             </div>
                         </div>
-                        <div class="article-image">
-                            <img src="{}" alt="Article Haiku Image" style="width: 30vw; margin-left: 2rem;" />
+                        <div class="social-status">
+                            <div class="social-platform">
+                                <strong>Bluesky Post:</strong>
+                                <span class="{}">
+                                    {}
+                                </span>
+                            </div>
+                            <div class="social-platform">
+                                <strong>Instagram Post:</strong>
+                                <span class="{}">
+                                    {}
+                                </span>
+                            </div>
                         </div>
                     </div>
+                    <div class="article-image">
+                        <img src="{}" alt="Article Haiku Image" style="width: 30vw; margin-left: 2rem;" />
+                    </div>
                 </div>
-                <style>
-                    .published-card {{
-                        background-color: #1c2331;
-                        padding: 1.5rem;
-                        border-radius: 8px;
-                        margin-top: 1rem;
-                        color: rgba(255, 255, 255, 0.9);
-                        border: 1px solid #4A6FA5;
-                    }}
-                    .published-card h3 {{
-                        color: #4A6FA5;
-                        margin-bottom: 0.5rem;
-                    }}
-                    .article-image {{
-                        text-align: center;
-                    }}
-                    .article-image img {{
-                        max-width: 100%;
-                        border-radius: 4px;
-                    }}
-                    .article-links {{
-                        margin-top: 1rem;
-                    }}
-                    .article-links > div {{
-                        margin-bottom: 0.5rem;
-                    }}
-                    .article-id {{
-                        font-family: monospace;
-                        font-size: 0.9em;
-                        color: rgba(255, 255, 255, 0.7);
-                    }}
-                    .article-url {{
-                        color: #4A6FA5;
-                    }}
-                    .social-status {{
-                        margin-top: 1rem;
-                    }}
-                    .social-platform {{
-                        margin-top: 0.5rem;
-                    }}
-                    .success {{
-                        color: #2ecc71;
-                    }}
-                    .error {{
-                        color: #e74c3c;
-                    }}
-                </style>
-            """.format(
-                st.session_state.published_article_id,
-                st.session_state.published_article_url,
-                st.session_state.published_article_url,
-                "success" if hasattr(st.session_state, 'bluesky_success') and st.session_state.bluesky_success else "error",
-                "Posted successfully" if hasattr(st.session_state, 'bluesky_success') and st.session_state.bluesky_success else "Failed to post",
-                "success" if hasattr(st.session_state, 'instagram_success') and st.session_state.instagram_success else "error",
-                "Posted successfully" if hasattr(st.session_state, 'instagram_success') and st.session_state.instagram_success else "Failed to post",
-                st.session_state.publish_data['image_haiku']
-            ), unsafe_allow_html=True)
-        
-        else:
-            col1, col2 = st.columns([3, 2])
-            
-            with col1:
-                st.markdown("### Article Content")
-                st.markdown(f"**Headline:** {st.session_state.publish_data.get('AIHeadline', 'No headline')}")
-                st.markdown(f"**Category:** {st.session_state.publish_data.get('cat', 'No category')}")
-                st.markdown(f"**Topic:** {st.session_state.publish_data.get('topic', 'No topic')}")
-                
-                # Display haiku image with styling
-                if st.session_state.haiku_image_path:
-                    st.markdown("""
-                        <style>
-                            [data-testid="stImage"] {
-                                width: 100%;
-                                margin: 1rem auto;
-                                display: block;
-                            }
-                            [data-testid="stImage"] img {
-                                border-radius: 8px;
-                                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                            }
-                        </style>
-                    """, unsafe_allow_html=True)
-                    st.image(st.session_state.haiku_image_path, caption="Haiku Visualization")
-                else:
-                    st.warning("No haiku image available")
-                
-                # Display the article summary without saving it to the database
-                st.markdown("**Summary:**")
-                st.markdown(st.session_state.publish_data.get('summary', 'No summary'))
-            
-            with col2:
-                st.markdown("### Publication Details")
-                try:
-                    quality_score = float(st.session_state.publish_data.get('qas', 0))
-                    st.metric("Quality Score", f"{quality_score:.1f}/10")
-                except (ValueError, TypeError):
-                    st.metric("Quality Score", "N/A")
-                
-                st.metric("Bias Score", st.session_state.publish_data.get('bs_p', 'N/A'))
-                
-                # Add Propagation Index metric
-                try:
-                    trend_score = float(st.session_state.publish_data.get('trend', 0))
-                    st.metric("Propagation Index", f"{trend_score:.1f}/10")
-                except (ValueError, TypeError):
-                    st.metric("Propagation Index", "N/A")
-                
-                # Add expander for full article content
-                with st.expander("View Full Article", expanded=False):
-                    st.markdown(st.session_state.publish_data.get('AIStory', 'No content'), unsafe_allow_html=True)
+            </div>
+            <style>
+                .published-card {{
+                    background-color: #1c2331;
+                    padding: 1.5rem;
+                    border-radius: 8px;
+                    margin-top: 1rem;
+                    color: rgba(255, 255, 255, 0.9);
+                    border: 1px solid #4A6FA5;
+                }}
+                .published-card h3 {{
+                    color: #4A6FA5;
+                    margin-bottom: 0.5rem;
+                }}
+                .article-image {{
+                    text-align: center;
+                }}
+                .article-image img {{
+                    max-width: 100%;
+                    border-radius: 4px;
+                }}
+                .article-links {{
+                    margin-top: 1rem;
+                }}
+                .article-links > div {{
+                    margin-bottom: 0.5rem;
+                }}
+                .article-id {{
+                    font-family: monospace;
+                    font-size: 0.9em;
+                    color: rgba(255, 255, 255, 0.7);
+                }}
+                .article-url {{
+                    color: #4A6FA5;
+                }}
+                .social-status {{
+                    margin-top: 1rem;
+                }}
+                .social-platform {{
+                    margin-top: 0.5rem;
+                }}
+                .success {{
+                    color: #2ecc71;
+                }}
+                .error {{
+                    color: #e74c3c;
+                }}
+            </style>
+        """.format(
+            st.session_state.published_article_id,
+            st.session_state.published_article_url,
+            st.session_state.published_article_url,
+            "success" if st.session_state.get('bluesky_success', False) else "error",
+            "Posted successfully" if st.session_state.get('bluesky_success', False) else "Failed to post",
+            "success" if st.session_state.get('instagram_success', False) else "error",
+            "Posted successfully" if st.session_state.get('instagram_success', False) else "Failed to post",
+            st.session_state.publish_data.get('image_haiku', '')
+        ), unsafe_allow_html=True)
     
-    except Exception as e:
-        st.error(f"Error displaying final review: {str(e)}")
-        reset_article_state()
+    else:
+        # Show the article content and publication buttons
+        col1, col2 = st.columns([3, 2])
+        
+        with col1:
+            st.markdown("### Article Content")
+            st.markdown(f"**Headline:** {st.session_state.publish_data.get('AIHeadline', 'No headline')}")
+            st.markdown(f"**Category:** {st.session_state.publish_data.get('cat', 'No category')}")
+            st.markdown(f"**Topic:** {st.session_state.publish_data.get('topic', 'No topic')}")
+            
+            # Display haiku image with styling
+            if st.session_state.haiku_image_path:
+                st.markdown("""
+                    <style>
+                        [data-testid="stImage"] {
+                            width: 100%;
+                            margin: 1rem auto;
+                            display: block;
+                        }
+                        [data-testid="stImage"] img {
+                            border-radius: 8px;
+                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                        }
+                    </style>
+                """, unsafe_allow_html=True)
+                st.image(st.session_state.haiku_image_path, caption="Haiku Visualization")
+            else:
+                st.warning("No haiku image available")
+            
+            # Display the article summary
+            st.markdown("**Summary:**")
+            st.markdown(st.session_state.publish_data.get('AISummary', 'No summary'))
+        
+        with col2:
+            st.markdown("### Publication Details")
+            try:
+                quality_score = float(st.session_state.publish_data.get('qas', 0))
+                st.metric("Quality Score", f"{quality_score:.1f}/10")
+            except (ValueError, TypeError):
+                st.metric("Quality Score", "N/A")
+            
+            st.metric("Bias Score", st.session_state.publish_data.get('bs_p', 'N/A'))
+            
+            # Add Propagation Index metric
+            try:
+                trend_score = float(st.session_state.publish_data.get('trend', 0))
+                st.metric("Propagation Index", f"{trend_score:.1f}/10")
+            except (ValueError, TypeError):
+                st.metric("Propagation Index", "N/A")
+            
+            # Add expander for full article content
+            with st.expander("View Full Article", expanded=False):
+                st.markdown(st.session_state.publish_data.get('AIStory', 'No content'), unsafe_allow_html=True)
+            
+            # Add buttons without nested columns
+            st.markdown('<div class="button-container">', unsafe_allow_html=True)
+            if st.button("Publish Article", key="final_review_publish", use_container_width=True):
+                publish_article_action()
+            if st.button("Cancel Publication", key="final_review_cancel", use_container_width=True):
+                st.session_state.article_rejected = True
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
 
 def handle_feedback():
     st.markdown("### Provide Feedback")

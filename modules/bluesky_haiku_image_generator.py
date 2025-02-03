@@ -13,7 +13,28 @@ load_dotenv()
 api_key = os.getenv("HORIAR_API_KEY")
 
 def generate_image_prompt(haiku, ai_headline):
-    prompt_request = f"""Create an image prompt for a news-focused social media background that captures both this headline and its accompanying haiku:
+    # Check if this is an AI Perspective piece
+    if ai_headline.startswith("AI Perspective:"):
+        prompt_request = f"""Create an image prompt featuring a retro 1960s-style robot newscaster delivering the story, optimized for social media impact:
+
+Headline: {ai_headline}
+Haiku:
+{haiku}
+
+Requirements for the image prompt:
+1. Must feature a 1960s-style robot newscaster as the main subject
+2. Robot should be positioned behind a classic news desk in a dynamic, social-media friendly composition
+3. Use retro broadcast studio elements (vintage cameras, studio lights, old-school microphones)
+4. Include an eye-catching news backdrop behind the robot that relates to the headline topic
+5. Create a vintage television news atmosphere with modern social appeal
+6. Design for optimal social media impact and engagement
+7. Use warm, vintage color palette inspired by 1960s TV broadcasts
+8. Add retro broadcast graphics that work well with social overlays
+9. Robot should have iconic 1960s design elements (chrome finish, antenna, dials, vacuum tubes)
+
+The prompt should generate a striking social media image showing a retro robot news anchor delivering the story in classic 1960s broadcast style, with story-relevant visuals in the backdrop."""
+    else:
+        prompt_request = f"""Create an image prompt for a news-focused social media background that captures both this headline and its accompanying haiku:
 
 Headline: {ai_headline}
 Haiku:
