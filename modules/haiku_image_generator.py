@@ -94,7 +94,7 @@ def generate_image(prompt):
     data = {
         "prompt": f"{prompt} | professional news media aesthetic | high quality | balanced composition | digital platform optimized",
         "model_type": "normal",
-        "resolution": "1024x1024"
+        "resolution": "1344x768"
     }
     
     progress_container = st.container()
