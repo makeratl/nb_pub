@@ -179,10 +179,9 @@ function publishArticle($articleData) {
     $topic = $conn->real_escape_string($articleData['topic']);
     $cat = $conn->real_escape_string($articleData['cat']);
     $qas = $conn->real_escape_string($articleData['qas']);
-    $image_data = isset($articleData['image_data']) ? $conn->real_escape_string($articleData['image_data']) : null;
-    $image_haiku = isset($articleData['image_haiku']) ? $conn->real_escape_string($articleData['image_haiku']) : null;
+   
 
-    $query = "INSERT INTO articles (AIHeadline, AISummary, AIStory, AIHaiku, deta_bs_align, bs, bs_p, Cited, topic, Published, cat, QAS, image_data, image_haiku) 
+    $query = "INSERT INTO articles (AIHeadline, AISummary, AIStory, AIHaiku, deta_bs_align, bs, bs_p, Cited, topic, Published, cat, QAS) 
               VALUES (
                   '$AIHeadline', 
                   '$AISummary', 
@@ -195,10 +194,7 @@ function publishArticle($articleData) {
                   '$topic', 
                   CURRENT_TIMESTAMP, 
                   '$cat',
-                  '$qas',
-                  " . ($image_data ? "'$image_data'" : "NULL") . ",
-                  " . ($image_haiku ? "'$image_haiku'" : "NULL") . "
-              )";
+                  '$qas')";
     
     if ($conn->query($query) === TRUE) {
         $newArticleId = $conn->insert_id;
