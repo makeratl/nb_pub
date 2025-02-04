@@ -1481,13 +1481,20 @@ def display_final_review():
     
     def publish_article_action():
         with st.spinner("Publishing article..."):
-            # Update the AISummary with the raw reasoning data
-            st.session_state.publish_data['AISummary'] = st.session_state.evaluation.get('reasoning', '')
+            # Create clean copy of publish data without image blobs
+            clean_publish_data = st.session_state.publish_data.copy()
+            clean_publish_data.update({
+                'image_data': None,
+                'image_haiku': None,
+                'bluesky_image_data': None,
+                'bluesky_image_haiku': None
+            })
             
             article_id = publish_article(
-                st.session_state.publish_data,
+                clean_publish_data,  # Use cleaned data instead of original
                 os.environ.get("PUBLISH_API_KEY")
             )
+            
             if article_id:
                 st.session_state.publication_success = True
                 st.session_state.published_article_id = article_id
@@ -1558,7 +1565,6 @@ Read more: {article_url}
                     except Exception as e:
                         st.error(f"Failed to upload images to FTP: {str(e)}")
                 
-                st.rerun()  # Rerun to update button state
             else:
                 st.error("Failed to publish article")
                 return
@@ -1660,51 +1666,49 @@ Read more: {article_url}
                 </div>
             </div>
             <style>
-                .published-card {{
-                    background-color: #1c2331;
-                    padding: 1.5rem;
-                    border-radius: 8px;
-                    margin-top: 1rem;
-                    color: rgba(255, 255, 255, 0.9);
-                    border: 1px solid #4A6FA5;
-                }}
-                .published-card h3 {{
+                .published-card {
+                    position: relative;
+                    z-index: 100;
+                    margin: 2rem 0;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+                }
+                .published-card h3 {
                     color: #4A6FA5;
                     margin-bottom: 0.5rem;
-                }}
-                .article-image {{
+                }
+                .article-image {
                     text-align: center;
-                }}
-                .article-image img {{
+                }
+                .article-image img {
                     max-width: 100%;
                     border-radius: 4px;
-                }}
-                .article-links {{
+                }
+                .article-links {
                     margin-top: 1rem;
-                }}
-                .article-links > div {{
+                }
+                .article-links > div {
                     margin-bottom: 0.5rem;
-                }}
-                .article-id {{
+                }
+                .article-id {
                     font-family: monospace;
                     font-size: 0.9em;
                     color: rgba(255, 255, 255, 0.7);
-                }}
-                .article-url {{
+                }
+                .article-url {
                     color: #4A6FA5;
-                }}
-                .social-status {{
+                }
+                .social-status {
                     margin-top: 1rem;
-                }}
-                .social-platform {{
+                }
+                .social-platform {
                     margin-top: 0.5rem;
-                }}
-                .success {{
+                }
+                .success {
                     color: #2ecc71;
-                }}
-                .error {{
+                }
+                .error {
                     color: #e74c3c;
-                }}
+                }
             </style>
         """.format(
             st.session_state.published_article_id,

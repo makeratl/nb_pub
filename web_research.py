@@ -206,6 +206,10 @@ def main():
             category_counts = get_category_counts(headlines)
             category_options = ["All Categories"] + [cat for cat, _ in category_counts]
             
+            # Initialize headline_page if not exists
+            if 'headline_page' not in st.session_state:
+                st.session_state.headline_page = 1
+            
             # Get the current category from session state
             current_category = st.session_state.get('selected_category', 'All Categories')
             
@@ -245,10 +249,6 @@ def main():
                 st.session_state.selected_category = selected_category
                 st.session_state.headline_page = 1
                 st.rerun()
-            
-            # Initialize page number
-            if 'headline_page' not in st.session_state:
-                st.session_state.headline_page = 1
             
             # Display headlines
             st.markdown(headlines_html, unsafe_allow_html=True)
