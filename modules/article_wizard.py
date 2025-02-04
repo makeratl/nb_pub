@@ -1464,6 +1464,9 @@ def display_image_step():
 
 def display_final_review():
     """Display final review before publication"""
+    # Reset publication status on entry
+    st.session_state.publication_success = False
+    
     # Ensure we have publish data
     if not st.session_state.publish_data:
         st.error("No publication data available")
@@ -1619,6 +1622,7 @@ Read more: {article_url}
         return
     
     elif is_published:
+        is_published = st.session_state.get('publication_success', False)
         st.markdown("""
             <div class="published-card">
                 <div style="display: flex; align-items: center;">
