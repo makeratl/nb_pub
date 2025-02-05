@@ -12,7 +12,7 @@ import streamlit as st
 load_dotenv()
 api_key = os.getenv("HORIAR_API_KEY")
 
-def generate_image_prompt(haiku, ai_headline):
+def generate_image_prompt(haiku, ai_headline, feedback=None):
     # Check if this is an AI Perspective piece
     if ai_headline.startswith("AI Perspective:"):
         prompt_request = f"""Create an image prompt featuring a retro 1960s-style robot newscaster delivering the story, optimized for social media impact:
@@ -31,6 +31,7 @@ Requirements for the image prompt:
 7. Use warm, vintage color palette inspired by 1960s TV broadcasts
 8. Add retro broadcast graphics that work well with social overlays
 9. Robot should have iconic 1960s design elements (chrome finish, antenna, dials, vacuum tubes)
+{f'10. Incorporate user feedback: {feedback}' if feedback else ''}
 
 The prompt should generate a striking social media image showing a retro robot news anchor delivering the story in classic 1960s broadcast style, with story-relevant visuals in the backdrop."""
     else:
@@ -41,14 +42,11 @@ Haiku:
 {haiku}
 
 Requirements for the image prompt:
-1. Must be suitable for news content and maintain journalistic integrity
-2. Should be visually engaging for social media feeds
-3. Avoid controversial or politically charged imagery
-4. Use abstract or metaphorical representations when dealing with sensitive topics
-5. Ensure the imagery is culturally sensitive and globally appropriate
-6. Create a balanced composition that works well with text overlay
-7. Use a color palette that maintains readability on social platforms
-8. Consider visual hierarchy for mobile viewing
+1. Must maintain journalistic integrity and news media standards
+2. Create visually engaging composition for digital platforms
+3. Ensure cultural sensitivity and global appropriateness
+4. Design for text overlay compatibility
+{f'5. Incorporate user feedback: {feedback}' if feedback else ''}
 
 The prompt should focus on creating an artistic, professional background that enhances both the headline and haiku without sensationalizing the news content."""
     return chat_with_codegpt(prompt_request)

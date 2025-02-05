@@ -745,7 +745,8 @@ def display_review_step():
             image_path, image_prompt = generate_haiku_background(
                 st.session_state.publish_data.get('AIHaiku', ''),
                 st.session_state.publish_data.get('AIHeadline', ''),
-                st.session_state.publish_data.get('article_date', '')
+                st.session_state.publish_data.get('article_date', ''),
+                st.session_state.publish_data.get('image_prompt', '')
             )
             if image_path:
                 st.session_state.haiku_image_path = image_path
@@ -769,7 +770,8 @@ def display_review_step():
             bluesky_image_path, _ = generate_bluesky_haiku_background(
                 st.session_state.publish_data.get('AIHaiku', ''),
                 st.session_state.publish_data.get('AIHeadline', ''),
-                st.session_state.publish_data.get('article_date', '')
+                st.session_state.publish_data.get('article_date', ''),
+                st.session_state.publish_data.get('image_prompt', '')
             )
             if bluesky_image_path:
                 st.session_state.bluesky_image_path = bluesky_image_path
@@ -1190,8 +1192,8 @@ def display_image_step():
             article_date = st.session_state.publish_data.get('article_date', '')
             previous_prompt = st.session_state.publish_data.get('image_prompt', '')
 
-            # Generate a single prompt for both images
-            image_prompt = generate_image_prompt(haiku, headline)
+            # Generate a single prompt for both images, including feedback
+            image_prompt = generate_image_prompt(haiku, headline, feedback)
             
             # Generate standard image
             standard_image_path, _ = generate_haiku_background(

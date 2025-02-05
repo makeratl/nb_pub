@@ -13,13 +13,14 @@ import sys
 load_dotenv()
 api_key = os.getenv("HORIAR_API_KEY")
 
-def generate_image_prompt(haiku, ai_headline):
+def generate_image_prompt(haiku, ai_headline, feedback=None):
     """
     Generate an image prompt based on a haiku and headline.
     
     Args:
         haiku (str): The haiku text
         ai_headline (str): The AI-generated headline
+        feedback (str, optional): User feedback for image regeneration
         
     Returns:
         str: The generated image prompt
@@ -42,6 +43,7 @@ Requirements for the image prompt:
 7. Use warm, vintage color palette reminiscent of 1960s TV broadcasts
 8. Add period-appropriate broadcast graphics or news tickers
 9. Robot should have classic 1960s design elements (chrome finish, antenna, dials, vacuum tubes)
+{f'10. Incorporate user feedback: {feedback}' if feedback else ''}
 
 The prompt should generate an image that shows a retro robot news anchor delivering the story in classic 1960s broadcast style, with relevant story elements visible in the backdrop."""
     else:
@@ -54,13 +56,9 @@ Haiku:
 Requirements for the image prompt:
 1. Must maintain journalistic integrity and news media standards
 2. Create visually engaging composition for digital platforms
-3. Avoid controversial or politically charged imagery
-4. Use abstract or metaphorical representations for sensitive topics
-5. Ensure cultural sensitivity and global appropriateness
-6. Design for text overlay compatibility
-7. Use readable color palettes that work across platforms
-8. Consider mobile-first viewing experience
-9. Balance artistic expression with professional news presentation
+3. Ensure cultural sensitivity and global appropriateness
+4. Design for text overlay compatibility
+{f'5. Incorporate user feedback: {feedback}' if feedback else ''}
 
 The prompt should generate an image that enhances both the headline and haiku while maintaining credibility and professionalism."""
     return chat_with_codegpt(prompt_request)
