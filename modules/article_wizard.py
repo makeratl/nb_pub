@@ -231,6 +231,10 @@ def display_article_step():
                 color: rgba(192, 160, 128, 0.8);
                 font-size: 1rem;
             }}
+            .topic {{
+                color: rgba(128, 160, 192, 0.8);
+                font-size: 1rem;
+            }}
             .scores {{
                 display: flex;
                 gap: 1rem;
@@ -253,7 +257,10 @@ def display_article_step():
         <div class="step-header">
             <div class="headline-text">{headline}</div>
             <div class="subheader-text">
-                <span class="category">{category}</span>
+                <div>
+                    <span class="category">{category}</span>
+                    <span class="topic"> | {st.session_state.article_data.get('topic', 'Unknown Topic')}</span>
+                </div>
                 <div class="scores">
                     <span class="score quality-score">Quality: {quality_score:.1f}/10</span>
                     <span class="score bias-score">Bias: {bias_text}</span>
@@ -1001,6 +1008,10 @@ def display_review_step():
                 color: rgba(192, 160, 128, 0.8);
                 font-size: 1rem;
             }}
+            .topic {{
+                color: rgba(128, 160, 192, 0.8);
+                font-size: 1rem;
+            }}
             .scores {{
                 display: flex;
                 gap: 1rem;
@@ -1023,7 +1034,10 @@ def display_review_step():
         <div class="step-header">
             <div class="headline-text">{headline}</div>
             <div class="subheader-text">
-                <span class="category">{category}</span>
+                <div>
+                    <span class="category">{category}</span>
+                    <span class="topic"> | {st.session_state.article_data.get('topic', 'Unknown Topic')}</span>
+                </div>
                 <div class="scores">
                     <span class="score quality-score">Quality: {quality_score:.1f}/10</span>
                     <span class="score bias-score">Bias: {bias_text}</span>
@@ -1452,6 +1466,10 @@ def display_image_step():
                 color: rgba(192, 160, 128, 0.8);
                 font-size: 1rem;
             }}
+            .topic {{
+                color: rgba(128, 160, 192, 0.8);
+                font-size: 1rem;
+            }}
             .scores {{
                 display: flex;
                 gap: 1rem;
@@ -1474,7 +1492,10 @@ def display_image_step():
         <div class="step-header">
             <div class="headline-text">{headline}</div>
             <div class="subheader-text">
-                <span class="category">{category}</span>
+                <div>
+                    <span class="category">{category}</span>
+                    <span class="topic"> | {st.session_state.article_data.get('topic', 'Unknown Topic')}</span>
+                </div>
                 <div class="scores">
                     <span class="score quality-score">Quality: {quality_score:.1f}/10</span>
                     <span class="score bias-score">Bias: {bias_text}</span>
