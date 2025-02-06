@@ -40,12 +40,20 @@ $apiKey = $_SERVER['HTTP_X_API_KEY'];
 
 if (!isValidApiKey($apiKey)) {
     error_log("Invalid API Key received: " . substr($apiKey, 0, 10) . "...");
+    error_log("Request Method: " . $_SERVER['REQUEST_METHOD']);
+    error_log("Request URI: " . $_SERVER['REQUEST_URI']);
+    error_log("Origin: " . ($_SERVER['HTTP_ORIGIN'] ?? 'Not Set'));
+    error_log("Full Headers: " . json_encode(getallheaders()));
+    
     http_response_code(403);
     echo json_encode([
         'error' => 'Forbidden - Invalid API Key',
         'debug' => [
             'received_key_prefix' => substr($apiKey, 0, 10),
-            'headers' => getallheaders()
+            'headers' => getallheaders(),
+            'request_method' => $_SERVER['REQUEST_METHOD'],
+            'request_uri' => $_SERVER['REQUEST_URI'],
+            'origin' => $_SERVER['HTTP_ORIGIN'] ?? 'Not Set'
         ]
     ]);
     exit();
@@ -862,6 +870,7 @@ function searchHistoricalArticles($keywords, $timeRange, $filters = []) {
                     AIStory,
                     AIHaiku,
                     Published,
+                    topic,
                     cat as category,
                     bs_p as biasScore,
                     QAS as qualityScore,

@@ -64,6 +64,108 @@ def display_article_step():
     bias_text = 'Neutral'  # Placeholder value
     trend_score = 0.0  # Placeholder value
     
+    # Add citation highlighting styles
+    st.markdown("""
+        <style>
+            q[data-source], span[data-source], span[data-sources] {
+                background-color: rgba(74, 111, 165, 0.1);
+                border-bottom: 1px dashed rgba(74, 111, 165, 0.5);
+                cursor: pointer;
+                position: relative;
+            }
+            
+            q[data-source]:hover, span[data-source]:hover, span[data-sources]:hover {
+                background-color: rgba(74, 111, 165, 0.2);
+            }
+            
+            .citation-tooltip {
+                position: absolute;
+                bottom: 100%;
+                left: 50%;
+                transform: translateX(-50%);
+                background-color: #1C1C1C;
+                border: 1px solid rgba(74, 111, 165, 0.3);
+                border-radius: 4px;
+                padding: 0.5rem;
+                font-size: 0.9em;
+                color: rgba(255, 255, 255, 0.9);
+                z-index: 1000;
+                display: none;
+            }
+            
+            q[data-source]:hover .citation-tooltip,
+            span[data-source]:hover .citation-tooltip,
+            span[data-sources]:hover .citation-tooltip {
+                display: block;
+            }
+            
+            .source-link {
+                color: #4A6FA5;
+                text-decoration: none;
+            }
+            
+            .source-link:hover {
+                text-decoration: underline;
+            }
+
+            .ai-attribution {
+                margin-top: 2rem;
+                padding-top: 1rem;
+            }
+
+            .ai-attribution hr {
+                border: 0;
+                height: 1px;
+                background: rgba(74, 111, 165, 0.2);
+                margin: 0 0 1rem 0;
+            }
+
+            .ai-attribution .footnote {
+                color: rgba(255, 255, 255, 0.7);
+                font-size: 0.9em;
+                font-style: italic;
+                line-height: 1.5;
+                margin: 0;
+                padding: 0 1rem;
+            }
+        </style>
+        
+        <script>
+            function showSourceTooltip(element) {
+                const sourceIds = element.dataset.source || element.dataset.sources;
+                const sources = sourceIds.split(',').map(id => {
+                    const sourceEl = document.querySelector(`[data-source-id="${id}"]`);
+                    return sourceEl ? sourceEl.innerHTML : '';
+                });
+                
+                const tooltip = document.createElement('div');
+                tooltip.className = 'citation-tooltip';
+                tooltip.innerHTML = sources.join('<br>');
+                element.appendChild(tooltip);
+            }
+            
+            document.addEventListener('DOMContentLoaded', () => {
+                const citations = document.querySelectorAll('q[data-source], span[data-source], span[data-sources]');
+                citations.forEach(citation => {
+                    citation.addEventListener('mouseenter', () => showSourceTooltip(citation));
+                });
+            });
+        </script>
+    """, unsafe_allow_html=True)
+    
+    # Create hidden source data elements
+    source_data_html = ""
+    for article in st.session_state.selected_cluster['articles']:
+        source_id = article.get('source_id', '')
+        if source_id:
+            source_data_html += f"""
+                <div style="display: none;" data-source-id="{source_id}">
+                    <strong>{article['name_source']}</strong><br>
+                    <a href="{article['link']}" class="source-link" target="_blank">View Source</a>
+                </div>
+            """
+    st.markdown(source_data_html, unsafe_allow_html=True)
+    
     def continue_to_audit():
         with st.spinner("Running AI audit..."):
             evaluation = review_article(st.session_state.article_data)
@@ -608,6 +710,22 @@ def display_article_step():
                         st.markdown(st.session_state.historical_discussion_response)
                         st.markdown("</div>", unsafe_allow_html=True)
 
+    # Display the article content with enhanced citation visibility
+    st.markdown("### Article Content")
+    st.markdown(st.session_state.article_data.get('story', ''), unsafe_allow_html=True)
+    
+    # Add source reference section
+    st.markdown("### Sources")
+    for article in st.session_state.selected_cluster['articles']:
+        source_id = article.get('source_id', '')
+        if source_id:
+            st.markdown(f"""
+                <div style="margin-bottom: 0.5rem;">
+                    <strong>[{source_id}] {article['name_source']}</strong><br>
+                    <a href="{article['link']}" class="source-link" target="_blank">{article['title']}</a>
+                </div>
+            """, unsafe_allow_html=True)
+
 def review_article(article_data):
     """Review article using AI evaluation"""
     if not article_data:
@@ -794,6 +912,15 @@ def display_review_step():
         st.session_state.article_rejected = True
         st.rerun()
     
+    def return_to_research():
+        """Return to the research/article step while preserving article data"""
+        st.session_state.current_step = 1
+        # We preserve article_data and selected_cluster
+        # but clear evaluation since we're going back for modifications
+        if 'evaluation' in st.session_state:
+            del st.session_state.evaluation
+        st.rerun()
+    
     # Check if the article has been rejected
     if st.session_state.article_rejected:
         st.markdown("""
@@ -816,7 +943,8 @@ def display_review_step():
     # Update the buttons to remove the "Provide Feedback" button
     buttons = [
         ("Continue to Image Generation", "continue_to_image", continue_to_image),
-        ("Reject Article", "review_reject", reject_article)
+        ("Reject Article", "review_reject", reject_article),
+        ("Back to Research", "back_to_research", return_to_research)
     ]
     
     # Define color mapping functions
@@ -1906,6 +2034,29 @@ def generate_historical_story(current_article, historical_articles, user_message
         # Get current date
         current_date = datetime.now().strftime("%Y-%m-%d")
 
+        # Calculate temporal statistics
+        dates = []
+        for article in historical_articles:
+            if article.get('Published'):
+                try:
+                    # Convert date string to datetime object
+                    pub_date = datetime.strptime(article['Published'], '%b %d, %Y')
+                    dates.append(pub_date)
+                except (ValueError, TypeError):
+                    continue
+        
+        if dates:
+            oldest_date = min(dates).strftime('%B %d, %Y')
+            newest_date = max(dates).strftime('%B %d, %Y')
+            date_range = f"spanning from {oldest_date} to {newest_date}"
+            total_articles = len(historical_articles)
+        else:
+            date_range = "from recent archives"
+            total_articles = len(historical_articles)
+
+        # Get search keywords from session state
+        keywords = st.session_state.get('keyword_input', 'relevant topics')
+
         # Collect all citations
         citations = []
         # Add current article citations
@@ -1930,9 +2081,20 @@ def generate_historical_story(current_article, historical_articles, user_message
                     "category": article.get('category', '')
                 })
 
+        # Create attribution footnote with temporal stats
+        attribution_footnote = f"""
+          <div class="ai-attribution">
+            <hr>
+            <p class="footnote">This article was synthesized by AI from AI News Brew's research archives on {current_date}. 
+            The analysis incorporates {total_articles} historical articles {date_range}, researched using the query "{keywords}". 
+            It combines current reporting with historical analysis to provide a comprehensive perspective on the topic. 
+            All facts and quotes are derived from cited sources.</p>
+          </div>
+        """
+
         # Create prompt for story generation
         prompt = f"""
-        You are giving an AI research journalist's perspective on a news topic that incorporates both current events and recent historical context.  You job is to understand the user's question and provide a comprehensive and engaging story that incorporates both the current events and the historical context.  
+        You are giving an AI research journalist's perspective on a news topic that incorporates both current events and recent historical context. You job is to understand the user's question and provide a comprehensive and engaging story that incorporates both the current events and the historical context.  
         Today's Date: {current_date}
         
         CURRENT ARTICLE CONTEXT:
@@ -1946,6 +2108,11 @@ def generate_historical_story(current_article, historical_articles, user_message
 
         USER QUESTION/DIRECTION:
         {user_message}
+        
+        TEMPORAL CONTEXT:
+        - Analysis covers articles {date_range}
+        - Total historical articles referenced: {total_articles}
+        - Search keywords: "{keywords}"
         
         REQUIREMENTS:
         1. Create a JSON response with the following structure:
@@ -1964,6 +2131,8 @@ def generate_historical_story(current_article, historical_articles, user_message
         - Focus on patterns and developments over time
         - Highlight significant changes or consistencies
         - Consider temporal relevance to today
+        - End with this exact attribution footnote:
+          {attribution_footnote}
         
         3. Haiku Guidelines:
         - Capture the essence of the story's historical significance
@@ -1977,6 +2146,7 @@ def generate_historical_story(current_article, historical_articles, user_message
         - Proper attribution of sources
         - Balance between current events and historical context
         - Emphasize temporal context and relevance to today
+        - Reference the temporal span of sources when discussing historical patterns
         """
 
         # Get AI response

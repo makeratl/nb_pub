@@ -61,7 +61,8 @@ def create_article(cluster):
                 "title": title,
                 "content": article.get('content', ''),
                 "name_source": source,
-                "link": article.get('link', '')
+                "link": article.get('link', ''),
+                "source_id": len(articles_data) + 1  # Add source ID for citation
             })
             seen_titles.add(title)
             seen_sources.add(source)
@@ -87,16 +88,24 @@ def create_article(cluster):
     - Structure with clear paragraphs and sections
     - Use semantic HTML tags (<p>, <h2>, etc.) for organization
     - Avoid inline styles - keep HTML clean and semantic
-    - Include relevant quotes and attributions
+    - Include relevant quotes and attributions using the following format:
+      * For direct quotes: <q data-source="[source_id]">quote text</q>
+      * For paraphrased facts: <span data-source="[source_id]">fact text</span>
+      * For multiple sources: <span data-sources="[source_id1,source_id2]">fact text</span>
+    - Each paragraph should have at least one cited fact or quote
+    - When stating statistics, numbers, or specific claims, always include a citation
+    - For editorial content, cite multiple sources to show balanced perspective
     - Maintain objective, balanced reporting
-    - Be mindful of special characters in the content that could break JSON object storage.  If double quotes are present, use single quotes instead.
+    - Be mindful of special characters in the content that could break JSON object storage. If double quotes are present, use single quotes instead.
 
     4. Summary:
     - Provide a single, concise paragraph
     - Capture key points and significance
     - Keep focused and avoid unnecessary details
     - End with clear takeaway or context
-    The story should be in HTML format.
+
+    The story should be in HTML format with proper semantic structure and citations.
+    Each source has a unique source_id that should be used in the data-source attributes.
     
     Sources: {json.dumps(articles_data, indent=2)}"""
 
