@@ -918,6 +918,177 @@ function searchHistoricalArticles($keywords, $timeRange, $filters = []) {
     }
 }
 
+// New endpoint for unlimited historical research
+function searchHistoricalArticlesUnlimited($keywords, $timeRange, $filters = []) {
+    try {
+        $conn = dbConnect();
+        if (!$conn) {
+            throw new Exception("Database connection failed");
+        }
+
+        // Initialize WHERE clauses and debug info
+        $whereClauses = [];
+        $debugInfo = [
+            'input' => [
+                'keywords' => $keywords,
+                'timeRange' => $timeRange,
+                'filters' => $filters
+            ],
+            'processedClauses' => [],
+            'errors' => []
+        ];
+        
+        // Keyword processing
+        if ($keywords) {
+            $keywordClauses = [];
+            // Split by comma first
+            $keywordGroups = array_map('trim', explode(',', $keywords));
+            
+            $debugInfo['processedClauses']['keywords'] = [];
+            
+            foreach ($keywordGroups as $keywordGroup) {
+                $groupClauses = [];
+                
+                // Check if this is an OR group (contains |)
+                if (strpos($keywordGroup, '|') !== false) {
+                    $orTerms = array_map('trim', explode('|', $keywordGroup));
+                    $orClauses = [];
+                    foreach ($orTerms as $term) {
+                        $sanitizedTerm = $conn->real_escape_string($term);
+                        $clause = "(topic REGEXP '(^|[[:space:],.])" . $sanitizedTerm . "([[:space:],.]|$)' OR " .
+                                 "AIHeadline REGEXP '(^|[[:space:],.])" . $sanitizedTerm . "([[:space:],.]|$)' OR " .
+                                 "AIStory REGEXP '(^|[[:space:],.])" . $sanitizedTerm . "([[:space:],.]|$)')";
+                        $orClauses[] = $clause;
+                    }
+                    $groupClauses[] = "(" . implode(" OR ", $orClauses) . ")";
+                }
+                // Handle quoted phrases
+                elseif (preg_match('/^"(.*)"$/', $keywordGroup, $matches)) {
+                    $exactPhrase = $conn->real_escape_string($matches[1]);
+                    $clause = "(topic REGEXP '(^|[[:space:],.])" . $exactPhrase . "([[:space:],.]|$)' OR " .
+                             "AIHeadline REGEXP '(^|[[:space:],.])" . $exactPhrase . "([[:space:],.]|$)' OR " .
+                             "AIStory REGEXP '(^|[[:space:],.])" . $exactPhrase . "([[:space:],.]|$)')";
+                    $groupClauses[] = $clause;
+                }
+                // Handle AND operator
+                elseif (strpos($keywordGroup, ' AND ') !== false) {
+                    $andTerms = array_map('trim', explode(' AND ', $keywordGroup));
+                    $andClauses = [];
+                    foreach ($andTerms as $term) {
+                        $sanitizedTerm = $conn->real_escape_string($term);
+                        $clause = "(topic REGEXP '(^|[[:space:],.])" . $sanitizedTerm . "([[:space:],.]|$)' OR " .
+                                 "AIHeadline REGEXP '(^|[[:space:],.])" . $sanitizedTerm . "([[:space:],.]|$)' OR " .
+                                 "AIStory REGEXP '(^|[[:space:],.])" . $sanitizedTerm . "([[:space:],.]|$)')";
+                        $andClauses[] = $clause;
+                    }
+                    $groupClauses[] = "(" . implode(" AND ", $andClauses) . ")";
+                }
+                // Simple keyword
+                else {
+                    $sanitizedKeyword = $conn->real_escape_string($keywordGroup);
+                    $clause = "(topic REGEXP '(^|[[:space:],.])" . $sanitizedKeyword . "([[:space:],.]|$)' OR " .
+                             "AIHeadline REGEXP '(^|[[:space:],.])" . $sanitizedKeyword . "([[:space:],.]|$)' OR " .
+                             "AIStory REGEXP '(^|[[:space:],.])" . $sanitizedKeyword . "([[:space:],.]|$)')";
+                    $groupClauses[] = $clause;
+                }
+                
+                if (!empty($groupClauses)) {
+                    $keywordClauses[] = implode(" AND ", $groupClauses);
+                }
+            }
+            
+            $combinedKeywordClause = "(" . implode(" AND ", $keywordClauses) . ")";
+            $whereClauses[] = $combinedKeywordClause;
+        }
+
+        // Handle filters
+        if (!empty($filters['category'])) {
+            $category = $conn->real_escape_string($filters['category']);
+            $whereClauses[] = "cat = '$category'";
+        }
+
+        if (!empty($filters['biasRange'])) {
+            $minBias = floatval($filters['biasRange'][0]);
+            $maxBias = floatval($filters['biasRange'][1]);
+            $whereClauses[] = "CAST(bs_p AS DECIMAL(10,2)) BETWEEN $minBias AND $maxBias";
+        }
+
+        if (!empty($filters['qualityRange'])) {
+            $minQuality = floatval($filters['qualityRange'][0]);
+            $maxQuality = floatval($filters['qualityRange'][1]);
+            $whereClauses[] = "CAST(QAS AS DECIMAL(10,2)) BETWEEN $minQuality AND $maxQuality";
+        }
+
+        // Time range processing
+        $timeRangeMap = [
+            '90d' => '90 DAY',
+            '180d' => '180 DAY',
+            '365d' => '365 DAY',
+            '730d' => '730 DAY',
+            '1825d' => '1825 DAY',
+            'all' => null
+        ];
+
+        if ($timeRange && $timeRange !== 'all' && isset($timeRangeMap[$timeRange])) {
+            $interval = $timeRangeMap[$timeRange];
+            $whereClauses[] = "Published >= DATE_SUB(NOW(), INTERVAL $interval)";
+        }
+
+        // Combine all conditions
+        $whereClause = !empty($whereClauses) ? "WHERE " . implode(" AND ", $whereClauses) : "";
+
+        // Get total count
+        $countQuery = "SELECT COUNT(*) as total FROM articles $whereClause";
+        $countResult = $conn->query($countQuery);
+        $totalArticles = $countResult->fetch_assoc()['total'];
+
+        // Main query without pagination
+        $query = "SELECT 
+                    ID,
+                    AIHeadline,
+                    AIStory,
+                    AIHaiku,
+                    Published,
+                    topic,
+                    cat as category,
+                    bs_p as biasScore,
+                    QAS as qualityScore,
+                    CONCAT('https://ainewsbrew.com/article/', ID) as link
+                  FROM articles 
+                  $whereClause
+                  ORDER BY Published DESC";
+
+        $result = $conn->query($query);
+        $articles = [];
+        
+        if ($result && $result->num_rows > 0) {
+            while($row = $result->fetch_assoc()) {
+                $row['biasScore'] = is_numeric($row['biasScore']) ? floatval($row['biasScore']) : null;
+                $row['qualityScore'] = is_numeric($row['qualityScore']) ? floatval($row['qualityScore']) : null;
+                $articles[] = $row;
+            }
+        }
+
+        $conn->close();
+
+        return [
+            'status' => 'success',
+            'articles' => $articles,
+            'metadata' => [
+                'totalResults' => $totalArticles
+            ],
+            'debug' => $debugInfo
+        ];
+        
+    } catch (Exception $e) {
+        if (isset($conn)) {
+            $conn->close();
+        }
+        error_log("searchHistoricalArticlesUnlimited Error: " . $e->getMessage());
+        throw $e;
+    }
+}
+
 // Main logic
 $mode = $_GET['mode'] ?? '';
 
@@ -1020,6 +1191,58 @@ switch ($mode) {
             }
         } catch (Exception $e) {
             error_log("Historical Search Outer Error: " . $e->getMessage());
+            echo json_encode([
+                'error' => 'Request processing failed',
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+        break;
+    case 'historical_unlimited':
+        try {
+            $keywords = $_GET['keywords'] ?? '';
+            $timeRange = $_GET['timeRange'] ?? '24h';
+            $filters = json_decode(file_get_contents('php://input'), true) ?? [];
+            
+            error_log("Historical Unlimited Search Request - Keywords: " . $keywords);
+            error_log("Historical Unlimited Search Request - TimeRange: " . $timeRange);
+            error_log("Historical Unlimited Search Request - Filters: " . json_encode($filters));
+            
+            if (empty($keywords)) {
+                $error = ['error' => 'Keywords required', 'request' => [
+                    'keywords' => $keywords,
+                    'timeRange' => $timeRange,
+                    'filters' => $filters
+                ]];
+                error_log("Historical Unlimited Search Error: Keywords missing");
+                echo json_encode($error);
+                break;
+            }
+            
+            try {
+                $results = searchHistoricalArticlesUnlimited($keywords, $timeRange, $filters);
+                header('Content-Type: application/json');
+                
+                if (empty($results['articles'])) {
+                    error_log("Historical Unlimited Search: No results found for keywords: " . $keywords);
+                }
+                
+                echo json_encode($results);
+            } catch (Exception $e) {
+                error_log("Historical Unlimited Search Error: " . $e->getMessage());
+                echo json_encode([
+                    'error' => 'Search failed',
+                    'message' => $e->getMessage(),
+                    'request' => [
+                        'keywords' => $keywords,
+                        'timeRange' => $timeRange,
+                        'filters' => $filters
+                    ],
+                    'trace' => $e->getTraceAsString()
+                ]);
+            }
+        } catch (Exception $e) {
+            error_log("Historical Unlimited Search Outer Error: " . $e->getMessage());
             echo json_encode([
                 'error' => 'Request processing failed',
                 'message' => $e->getMessage(),
