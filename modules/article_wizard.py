@@ -15,12 +15,13 @@ import json
 import os
 import base64
 import requests
+import urllib.parse
 from datetime import datetime
 
 def create_step_header(headline, buttons):
     """Create consistent header with headline and action buttons"""
     # Format the headline string with proper HTML escaping
-    formatted_headline = headline.replace('"', '&quot;').replace("'", "&#39;")
+    formatted_headline = headline.replace('"', '&quot;').replace("'", '&#39;')
     
     st.markdown(f"""
         <style>
@@ -2103,13 +2104,17 @@ def generate_historical_story(current_article, historical_articles, user_message
                 })
 
         # Create attribution footnote with temporal stats
+        # URL encode the keywords for the research link
+        encoded_keywords = urllib.parse.quote(keywords.replace(' ', ','))
+        research_url = f"https://www.ainewsbrew.com/research?q={encoded_keywords}"
+        
         attribution_footnote = f"""
           <div class="ai-attribution">
             <hr>
             <p class="footnote">This article was synthesized by AI from AI News Brew's research archives on {current_date}. 
             The analysis incorporates {total_articles} historical articles {date_range}, researched using the query "{keywords}". 
             It combines current reporting with historical analysis to provide a comprehensive perspective on the topic. 
-            All facts and quotes are derived from cited sources.</p>
+            All facts and quotes are derived from cited sources. <a href="{research_url}" target="_blank">Explore more research on this topic</a>.</p>
           </div>
         """
 
