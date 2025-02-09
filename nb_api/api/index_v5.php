@@ -932,14 +932,19 @@ function searchHistoricalArticlesUnlimited($keywords, $timeRange, $filters = [])
             'input' => [
                 'keywords' => $keywords,
                 'timeRange' => $timeRange,
-                'filters' => $filters
+                'filters' => $filters,
+                'targetDate' => $filters['targetDate'] ?? date('Y-m-d')
             ],
             'processedClauses' => [],
             'errors' => []
         ];
+
+        // Handle target date filtering (new)
+        $targetDate = isset($filters['targetDate']) ? $conn->real_escape_string($filters['targetDate']) : date('Y-m-d');
+        $whereClauses[] = "DATE(Published) <= DATE('$targetDate')";
         
-        // Keyword processing
-        if ($keywords) {
+        // Keyword processing - only if keywords are provided
+        if (!empty($keywords)) {
             $keywordClauses = [];
             // Split by comma first
             $keywordGroups = array_map('trim', explode(',', $keywords));
@@ -997,8 +1002,10 @@ function searchHistoricalArticlesUnlimited($keywords, $timeRange, $filters = [])
                 }
             }
             
-            $combinedKeywordClause = "(" . implode(" AND ", $keywordClauses) . ")";
-            $whereClauses[] = $combinedKeywordClause;
+            if (!empty($keywordClauses)) {
+                $combinedKeywordClause = "(" . implode(" AND ", $keywordClauses) . ")";
+                $whereClauses[] = $combinedKeywordClause;
+            }
         }
 
         // Handle filters
@@ -1042,7 +1049,9 @@ function searchHistoricalArticlesUnlimited($keywords, $timeRange, $filters = [])
         $countResult = $conn->query($countQuery);
         $totalArticles = $countResult->fetch_assoc()['total'];
 
-        // Main query without pagination
+        // Main query - limit to 50 results if no keywords provided
+        $limitClause = empty($keywords) ? "LIMIT 200" : "";
+        
         $query = "SELECT 
                     ID,
                     AIHeadline,
@@ -1050,13 +1059,15 @@ function searchHistoricalArticlesUnlimited($keywords, $timeRange, $filters = [])
                     AIHaiku,
                     Published,
                     topic,
+                    Cited,
                     cat as category,
                     bs_p as biasScore,
                     QAS as qualityScore,
                     CONCAT('https://ainewsbrew.com/article/', ID) as link
                   FROM articles 
                   $whereClause
-                  ORDER BY Published DESC";
+                  ORDER BY Published DESC
+                  $limitClause";
 
         $result = $conn->query($query);
         $articles = [];
@@ -1204,27 +1215,22 @@ switch ($mode) {
             $timeRange = $_GET['timeRange'] ?? '24h';
             $filters = json_decode(file_get_contents('php://input'), true) ?? [];
             
+            // Add targetDate to filters if provided in URL parameters
+            if (isset($_GET['targetDate'])) {
+                $filters['targetDate'] = $_GET['targetDate'];
+            }
+            
             error_log("Historical Unlimited Search Request - Keywords: " . $keywords);
             error_log("Historical Unlimited Search Request - TimeRange: " . $timeRange);
+            error_log("Historical Unlimited Search Request - Target Date: " . ($filters['targetDate'] ?? 'Not Set'));
             error_log("Historical Unlimited Search Request - Filters: " . json_encode($filters));
-            
-            if (empty($keywords)) {
-                $error = ['error' => 'Keywords required', 'request' => [
-                    'keywords' => $keywords,
-                    'timeRange' => $timeRange,
-                    'filters' => $filters
-                ]];
-                error_log("Historical Unlimited Search Error: Keywords missing");
-                echo json_encode($error);
-                break;
-            }
             
             try {
                 $results = searchHistoricalArticlesUnlimited($keywords, $timeRange, $filters);
                 header('Content-Type: application/json');
                 
                 if (empty($results['articles'])) {
-                    error_log("Historical Unlimited Search: No results found for keywords: " . $keywords);
+                    error_log("Historical Unlimited Search: No results found" . ($keywords ? " for keywords: " . $keywords : ""));
                 }
                 
                 echo json_encode($results);
