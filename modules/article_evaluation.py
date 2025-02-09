@@ -53,10 +53,27 @@ def evaluate_article_with_ai(article, feedback_message=None):
         Sources: {article.get('Cited', 'No sources provided')}
         
         Provide a detailed analysis covering:
-        1. Quality Analysis: Evaluate based on the guidelines, focusing on source credibility and journalistic standards 
-        2. Bias Analysis: Assess political lean and perspective balance
-        3. Propagation Potential: Rate shareability and public interest, considering temporal relevance
-        4. Hashtag recommendation: Provide a list of hashtags that are relevant to the article
+        1. Source Analysis: Carefully evaluate each cited source for:
+           - Credibility and reputation of source organizations/authors
+           - Verification of claims against primary sources where possible
+           - Red flags for potential propaganda or extremist content
+           - For "AI Perspective:" articles: Verify that analysis is grounded in factual source material without speculation
+        2. Quality Analysis: Evaluate based on the guidelines, focusing on:
+           - Journalistic standards and objectivity
+           - Proper attribution and sourcing
+           - Clarity and accuracy of reporting
+           - For "AI Perspective:" articles: Assess if analysis adds meaningful insight without unfounded assumptions
+        3. Bias Analysis: 
+           - Assess political lean and perspective balance
+           - Check for loaded language or emotional manipulation
+           - Evaluate fairness in presentation of different viewpoints
+           - For "AI Perspective:" articles: Check for biased interpretations of source material
+        4. Propagation Potential: 
+           - Rate shareability and public interest
+           - Consider temporal relevance
+           - Assess educational/informational value
+           - For "AI Perspective:" articles: Evaluate if analysis enhances understanding
+        5. Hashtag recommendation: Provide relevant, factual hashtags that accurately represent the article content
         
         Return a JSON object with:
         {{
