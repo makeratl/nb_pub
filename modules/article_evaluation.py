@@ -63,10 +63,12 @@ def evaluate_article_with_ai(article, feedback_message=None):
            - Proper attribution and sourcing
            - Clarity and accuracy of reporting
            - For "AI Perspective:" articles: Assess if analysis adds meaningful insight without unfounded assumptions
-        3. Bias Analysis: 
-           - Assess political lean and perspective balance
-           - Check for loaded language or emotional manipulation
-           - Evaluate fairness in presentation of different viewpoints
+        3. Bias Analysis:
+           - Assess political lean based strictly on narrative framing and policy positions
+           - Check for loaded language, emotional manipulation, or provocative word choices
+           - Evaluate fairness in presentation of different viewpoints and perspectives
+           - Note: Neither humanizing subjects nor focusing purely on statistics/facts indicates political bias
+           - Focus on actual political positions, rhetoric and narrative choices rather than style choices
            - For "AI Perspective:" articles: Check for biased interpretations of source material
         4. Propagation Potential: 
            - Rate shareability and public interest

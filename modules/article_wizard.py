@@ -1674,6 +1674,7 @@ def display_final_review():
                             with st.spinner("Publishing to social media..."):
                                 # Get the haiku and hashtags
                                 haiku = st.session_state.publish_data.get('AIHaiku', '')
+                                headline = st.session_state.publish_data.get('AIHeadline', '')
                                 article_url = st.session_state.published_article_url
                                 hashtags = st.session_state.evaluation.get('hashtags', '')
                                 
@@ -1683,7 +1684,7 @@ def display_final_review():
                                 
                                 # Publish to Bluesky
                                 image_path = "bluesky_haikubg_with_text.jpg"
-                                bluesky_result = publish_to_bluesky(haiku, article_url, image_path, hashtags)
+                                bluesky_result = publish_to_bluesky(haiku, article_url, image_path, hashtags, headline)
                                 st.session_state.bluesky_success = bool(bluesky_result)
                                 if bluesky_result:
                                     st.success("Article posted successfully to Bluesky!")
@@ -1703,7 +1704,7 @@ Read more: {article_url}
 
 {hashtags}"""
                                     
-                                    instagram_result = instagram.publish_post(image_path, instagram_caption)
+                                    instagram_result = instagram.publish_post(image_path, instagram_caption, headline)
                                     st.session_state.instagram_success = bool(instagram_result)
                                     if instagram_result:
                                         st.success("Article posted successfully to Instagram!")

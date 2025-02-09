@@ -29,22 +29,23 @@ def upload_image(session, image_path):
     resp.raise_for_status()
     return resp.json()["blob"]
 
-def create_post(session, text, image_blob, article_url, hashtags):
+def create_post(session, text, image_blob, article_url, hashtags, headline):
     now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     
     # Calculate the start and end positions of the article URL in the text
-    url_start = len(text) + 1
+    url_start = len(text) + len(headline) + 3  # Add 3 for newlines
     url_end = url_start + len(article_url) + 24  # Add 24 to account for "Read the full article: " and the period
     
     # Limit hashtags to a maximum of 5
     hashtags = ' '.join(hashtags.split()[:5])
     
-    post_text = f"{text}\n\nRead the full article: {article_url}\n\n{hashtags}"
+    post_text = f"{text}\n\n{headline}\n\nRead the full article: {article_url}\n\n{hashtags}"
     
     # Truncate post_text if it exceeds 300 characters
     if len(post_text) > 300:
-        truncated_text = text[:200] + "..."  # Truncate the main text
-        post_text = f"{truncated_text}\n\nRead the full article: {article_url}\n\n{hashtags}"
+        truncated_text = text[:150] + "..."  # Truncate the main text
+        truncated_headline = headline[:50] + "..." if len(headline) > 50 else headline
+        post_text = f"{truncated_text}\n\n{truncated_headline}\n\nRead the full article: {article_url}\n\n{hashtags}"
     
     post = {
         "$type": "app.bsky.feed.post",
@@ -87,11 +88,11 @@ def create_post(session, text, image_blob, article_url, hashtags):
     resp.raise_for_status()
     return resp.json()
 
-def publish_to_bluesky(haiku, article_url, image_path, hashtags):
+def publish_to_bluesky(haiku, article_url, image_path, hashtags, headline):
     try:
         session = create_session()
         image_blob = upload_image(session, image_path)
-        post_result = create_post(session, haiku, image_blob, article_url, hashtags)
+        post_result = create_post(session, haiku, image_blob, article_url, hashtags, headline)
         print(f"Published to Bluesky: {json.dumps(post_result, indent=2)}")
         # Return True if we got a valid post result with an 'uri' field
         return bool(post_result and post_result.get('uri'))

@@ -120,7 +120,7 @@ class InstagramPublisher:
             print(f"\nFailed to get account info: {str(e)}")
             raise
 
-    def create_container(self, image_path: str, caption: str) -> str:
+    def create_container(self, image_path: str, caption: str, headline: str) -> str:
         """
         Create a media container for the post
         Returns the container ID if successful
@@ -144,10 +144,11 @@ class InstagramPublisher:
         
         print(f"Image uploaded successfully: {image_url}")
         
-        # Create the container with the FTP URL
+        # Create the container with the FTP URL and combined caption
+        full_caption = f"{caption}\n\n{headline}\n\nRead more at the link in our bio."
         data = {
             'image_url': image_url,
-            'caption': caption
+            'caption': full_caption
         }
         
         result = self._make_request('POST', endpoint, data=data)
@@ -166,14 +167,14 @@ class InstagramPublisher:
         result = self._make_request('POST', endpoint, data=data)
         return result.get('id')
 
-    def publish_post(self, image_path: str, caption: str) -> Optional[str]:
+    def publish_post(self, image_path: str, caption: str, headline: str) -> Optional[str]:
         """
         Publish an image post to Instagram
         Returns the post ID if successful, None otherwise
         """
         try:
             # Step 1: Create a media container
-            container_id = self.create_container(image_path, caption)
+            container_id = self.create_container(image_path, caption, headline)
             if not container_id:
                 raise ValueError("Failed to create media container")
             
