@@ -33,7 +33,7 @@ def evaluate_article_with_ai(article, feedback_message=None):
             "quality_score": (0-10),
             "bs_p": ("Far Left"/"Left"/"Center Left"/"Neutral"/"Center Right"/"Right"/"Far Right"),
             "cat": "category",
-            "topic": "main topic", 
+            "topic": "Comma Separated List of Topics keywords", 
             "trend": (0-10),
             "reasoning": "Detailed analysis with Quality Analysis:, Bias Analysis:, and Propagation Potential: sections",
             "hashtags": "List of relevant hashtags formatted for publishing direct on social media"
@@ -82,7 +82,7 @@ def evaluate_article_with_ai(article, feedback_message=None):
             "quality_score": (0-10),
             "bs_p": ("Far Left"/"Left"/"Center Left"/"Neutral"/"Center Right"/"Right"/"Far Right"),
             "cat": "category",
-            "topic": "main topic", 
+            "topic": "Comma Separated List of Topics keywords", 
             "trend": (0-10),
             "reasoning": "Detailed analysis with Quality Analysis:, Bias Analysis:, and Propagation Potential: sections",
             "hashtags": "List of relevant hashtags formatted for publishing direct on social media"
