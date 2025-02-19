@@ -3,6 +3,9 @@ import traceback
 from chat_codegpt import chat_with_codegpt
 from datetime import datetime
 
+# Define the specific agent ID for article evaluation
+EVALUATION_AGENT_ID = "c065444b-510f-4ab0-97b8-3840c66109d3"
+
 def evaluate_article_with_ai(article, feedback_message=None):
     """Evaluate article using AI"""
     evaluation_context = article.get('evaluation_context', '')
@@ -90,7 +93,7 @@ def evaluate_article_with_ai(article, feedback_message=None):
         """
     
     try:
-        response = chat_with_codegpt(prompt)
+        response = chat_with_codegpt(prompt, agent_id=EVALUATION_AGENT_ID)
         
         parsed_response = json.loads(response)
         

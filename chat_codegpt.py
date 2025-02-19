@@ -4,11 +4,14 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-def chat_with_codegpt(user_message):
+def chat_with_codegpt(user_message, agent_id=None):
     # Load API credentials from environment variables
     api_key = os.environ.get("CODEGPT_API_KEY")
     org_id = os.environ.get("CODEGPT_ORG_ID")
-    agent_id = os.environ.get("CODEGPT_AGENT_ID")
+    default_agent_id = os.environ.get("CODEGPT_AGENT_ID")
+
+    # Use provided agent_id or fall back to default from environment
+    agent_id = agent_id or default_agent_id
 
     if not all([api_key, org_id, agent_id]):
         raise ValueError("Missing required environment variables for CodeGPT API")

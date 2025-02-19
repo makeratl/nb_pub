@@ -293,6 +293,15 @@ def main():
                     
                     if total_clusters > 0:
                         st.write(f"Found {total_clusters} clusters to analyze")
+                        # Debug: Show sample of first cluster
+                        st.write("Debug: First cluster sample:", {
+                            'num_articles': len(valid_clusters[0].get('articles', [])),
+                            'first_article': {
+                                'title': valid_clusters[0].get('articles', [{}])[0].get('title', 'NO TITLE'),
+                                'source': valid_clusters[0].get('articles', [{}])[0].get('name_source', 'NO SOURCE')
+                            }
+                        })
+                        
                         progress_bar = st.progress(0)
                         
                         for idx, cluster in enumerate(valid_clusters):
@@ -300,17 +309,25 @@ def main():
                             progress_bar.progress(progress)
                             
                             analysis = analyze_cluster(cluster)
-                            if analysis:
+                            if analysis and analysis.get('unique_source_count', 0) > 2:
+                                # Debug: Show what we're adding to clusters
+                                st.write(f"Debug: Adding cluster {idx} with data:", {
+                                    'headline': analysis.get('most_recent_headline', 'NO HEADLINE'),
+                                    'sources': analysis.get('unique_source_count', 0)
+                                })
+                                
                                 clusters.append({
                                     'category': analysis.get('category', 'Unknown'),
                                     'subject': analysis.get('subject', 'Unknown'),
                                     'bias': analysis.get('bias', 0.0),
                                     'cluster_size': len(cluster.get('articles', [])),
-                                    'articles': cluster.get('articles', [])
+                                    'articles': cluster.get('articles', []),
+                                    'most_recent_headline': analysis.get('most_recent_headline', 'No headline available'),
+                                    'unique_source_count': analysis.get('unique_source_count', 0)
                                 })
                         
                         progress_bar.progress(1.0)
-                        st.write(f"Analysis complete! Found {len(clusters)} valid clusters")
+                        st.write(f"Analysis complete! Found {len(clusters)} valid clusters with 3+ unique sources")
                     else:
                         st.warning("No clusters with 3 or more articles found")
                     
@@ -332,10 +349,11 @@ def main():
                 index=0
             )
 
-            # Display clusters
+            # Display clusters - filter out any with 2 or fewer sources
             filtered_clusters = [
                 cluster for cluster in st.session_state.clusters
-                if selected_category == "All Categories" or cluster['category'] == selected_category
+                if (selected_category == "All Categories" or cluster['category'] == selected_category)
+                and cluster.get('unique_source_count', 0) > 2
             ]
 
             for i, cluster in enumerate(filtered_clusters):
@@ -348,15 +366,21 @@ def main():
                     f"""
                     <div style="opacity: {opacity}; padding: 1rem; border: 1px solid rgba(74, 111, 165, 0.1); border-radius: 8px; margin-bottom: 0.75rem; background-color: #1C1C1C;">
                         <div style="font-weight: 500; font-size: 1em; margin-bottom: 0.5rem; color: rgba(255, 255, 255, 0.95);">
-                            {cluster['subject']}
+                            {cluster.get('most_recent_headline', 'No headline available')}
+                        </div>
+                        <div style="margin-bottom: 0.75rem; font-size: 0.85em; color: rgba(255, 255, 255, 0.8);">
+                            {"<br>".join(article.get('title', 'No title') for article in sorted(cluster.get('articles', []), key=lambda x: x.get('published_date', ''), reverse=True)[:3])}
                         </div>
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                             <div style="color: rgba(192, 160, 128, 0.95); font-size: 0.85em;">
-                                {cluster['category']}
+                                Sources: {cluster.get('unique_source_count', 0)}
                             </div>
                             <div style="color: rgba(255, 255, 255, 0.8); font-size: 0.9em;">
-                                Articles: {cluster['cluster_size']}
+                                Articles: {cluster.get('cluster_size', 0)}
                             </div>
+                        </div>
+                        <div style="margin-bottom: 0.5rem; color: rgba(255, 255, 255, 0.7); font-size: 0.8em;">
+                            {', '.join(sorted(set(article.get('name_source', 'Unknown') for article in cluster.get('articles', []))))}
                         </div>
                         <div style="display: flex; align-items: center; width: 100%; padding: 4px 0;">
                             <div style="flex: 1;">{create_custom_progress_bar(cluster.get('bias', 0), i)}</div>

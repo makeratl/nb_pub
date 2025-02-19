@@ -1,51 +1,64 @@
 """Cluster analysis and article generation functions"""
 import json
 from chat_codegpt import chat_with_codegpt
+import streamlit as st
+
+# Define specific agent IDs for different functions
+ANALYSIS_AGENT_ID = "03d17f5c-0c9b-40ee-8a53-3829f2746f0e"
+ARTICLE_CREATION_AGENT_ID = "c065444b-510f-4ab0-97b8-3840c66109d3"
 
 def analyze_cluster(cluster):
-    """Analyze a single cluster using CodeGPT"""
+    """Analyze a single cluster by extracting basic stats and most recent article"""
     articles = cluster.get('articles', [])
     
-    # Filter for unique titles and sources
-    seen_titles = set()
-    seen_sources = set()
-    seen_title_source_pairs = set()
-    filtered_articles = []
-    for article in articles:
-        title = article['title']
-        source = article.get('name_source', 'Unknown')
-        title_source_pair = (title, source)
-        if title_source_pair not in seen_title_source_pairs:
-            filtered_articles.append(article)
-            seen_titles.add(title)
-            seen_sources.add(source)
-            seen_title_source_pairs.add(title_source_pair)
+    # Debug: Print initial articles data
+    st.write("Debug: Number of articles received:", len(articles))
+    if articles:
+        st.write("Debug: First article sample:", {
+            'title': articles[0].get('title', 'NO TITLE'),
+            'source': articles[0].get('name_source', 'NO SOURCE'),
+            'date': articles[0].get('published_date', 'NO DATE')
+        })
     
-    # Check if cluster has enough unique articles
-    if len(filtered_articles) < 3:
+    if not articles:
         return None
+        
+    # Get unique sources
+    unique_sources = set(article.get('name_source', 'Unknown') for article in articles)
     
-    titles = [article['title'] for article in filtered_articles]
-    sources = [article.get('name_source', 'Unknown') for article in filtered_articles]
+    # Debug: Print unique sources
+    st.write("Debug: Number of unique sources:", len(unique_sources))
+    st.write("Debug: Unique sources:", list(unique_sources))
     
-    prompt = f"""Analyze these news headlines and their sources:
-    Headlines: {json.dumps(titles, indent=2)}
-    Sources: {json.dumps(sources, indent=2)}
+    # Sort articles by published date and get most recent
+    sorted_articles = sorted(
+        articles,
+        key=lambda x: x.get('published_date', ''),
+        reverse=True
+    )
     
-    Determine the common topic, categorize it, identify the main subject, and assess the overall political bias.
-    Return a JSON object with the structure: {{"category": "Category name", "subject": "Main subject or focus", "bias": number}}
-    The bias should be a number between -1 and 1, where -1 is extremely left-leaning and 1 is extremely right-leaning."""
+    # Get the first article's headline as a fallback
+    first_article_headline = articles[0].get('title', 'No title available')
     
-    analysis = chat_with_codegpt(prompt)
-    try:
-        result = json.loads(analysis)
-        # Ensure bias is a float
-        result['bias'] = float(result.get('bias', 0))
-        result['article_count'] = len(filtered_articles)
-        result['articles'] = filtered_articles
-        return result
-    except:
-        return None
+    # Use most recent if available, otherwise use first article
+    most_recent = sorted_articles[0] if sorted_articles else articles[0]
+    
+    # Debug: Print result before returning
+    result = {
+        'article_count': len(articles),
+        'unique_source_count': len(unique_sources),
+        'most_recent_headline': most_recent.get('title', first_article_headline),
+        'most_recent_date': most_recent.get('published_date', 'No date available'),
+        'articles': articles
+    }
+    
+    st.write("Debug: Final analysis result:", {
+        'article_count': result['article_count'],
+        'unique_source_count': result['unique_source_count'],
+        'most_recent_headline': result['most_recent_headline']
+    })
+    
+    return result
 
 def create_article(cluster):
     """Generate article from cluster using CodeGPT"""
@@ -109,7 +122,7 @@ def create_article(cluster):
     
     Sources: {json.dumps(articles_data, indent=2)}"""
 
-    article_json = chat_with_codegpt(prompt)
+    article_json = chat_with_codegpt(prompt, agent_id=ARTICLE_CREATION_AGENT_ID)
     try:
         return json.loads(article_json)
     except Exception as e:

@@ -12,6 +12,9 @@ import streamlit as st
 load_dotenv()
 api_key = os.getenv("HORIAR_API_KEY")
 
+# Define the specific agent ID for image generation
+IMAGE_GENERATION_AGENT_ID = "ee203091-d2a5-4013-8d66-21b3c1ab642b"
+
 def generate_image_prompt(haiku, ai_headline, feedback=None):
     # Check if this is an AI Perspective piece
     if ai_headline.startswith("AI Perspective:"):
@@ -49,7 +52,7 @@ Requirements for the image prompt:
 {f'5. Incorporate user feedback: {feedback}' if feedback else ''}
 
 The prompt should focus on creating an artistic, professional background that enhances both the headline and haiku without sensationalizing the news content."""
-    return chat_with_codegpt(prompt_request)
+    return chat_with_codegpt(prompt_request, agent_id=IMAGE_GENERATION_AGENT_ID)
 
 def poll_text_to_image_status(job_id, progress_container, progress_bar, status_text):
     headers = {"Authorization": f"Bearer {api_key}"}
