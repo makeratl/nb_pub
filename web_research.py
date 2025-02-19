@@ -320,8 +320,8 @@ def main():
                                     'category': analysis.get('category', 'Unknown'),
                                     'subject': analysis.get('subject', 'Unknown'),
                                     'bias': analysis.get('bias', 0.0),
-                                    'cluster_size': len(cluster.get('articles', [])),
-                                    'articles': cluster.get('articles', []),
+                                    'cluster_size': len(analysis.get('articles', [])),
+                                    'articles': analysis.get('articles', []),
                                     'most_recent_headline': analysis.get('most_recent_headline', 'No headline available'),
                                     'unique_source_count': analysis.get('unique_source_count', 0)
                                 })
@@ -369,7 +369,7 @@ def main():
                             {cluster.get('most_recent_headline', 'No headline available')}
                         </div>
                         <div style="margin-bottom: 0.75rem; font-size: 0.85em; color: rgba(255, 255, 255, 0.8);">
-                            {"<br>".join(article.get('title', 'No title') for article in sorted(cluster.get('articles', []), key=lambda x: x.get('published_date', ''), reverse=True)[:3])}
+                            {"<br>".join(f'- <span title="{article.get("title", "No title")}">{article.get("title", "No title")[:50]}{"..." if len(article.get("title", "No title")) > 50 else ""}</span>' for article in sorted(cluster.get('articles', []), key=lambda x: x.get('published_date', ''), reverse=True)[:3])}
                         </div>
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                             <div style="color: rgba(192, 160, 128, 0.95); font-size: 0.85em;">
@@ -380,7 +380,7 @@ def main():
                             </div>
                         </div>
                         <div style="margin-bottom: 0.5rem; color: rgba(255, 255, 255, 0.7); font-size: 0.8em;">
-                            {', '.join(sorted(set(article.get('name_source', 'Unknown') for article in cluster.get('articles', []))))}
+                            {', '.join(sorted(set(article.get('name_source', 'Unknown') for article in cluster.get('articles', [])))[:10]) + (f" + {len(set(article.get('name_source', 'Unknown') for article in cluster.get('articles', []))) - 10} other sources" if len(set(article.get('name_source', 'Unknown') for article in cluster.get('articles', []))) > 10 else '')}
                         </div>
                         <div style="display: flex; align-items: center; width: 100%; padding: 4px 0;">
                             <div style="flex: 1;">{create_custom_progress_bar(cluster.get('bias', 0), i)}</div>
@@ -390,68 +390,69 @@ def main():
                     unsafe_allow_html=True
                 )
                 
-                if st.button("Evaluate Sources", key=f"eval_cluster_{i}"):
-                    st.session_state.evaluating_cluster = i
-                    
-                    # Create a placeholder for the loading animation
-                    with col2:
-                        loading_placeholder = st.empty()
-                        with loading_placeholder.container():
-                            st.markdown("""
-                                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; background: rgba(74, 111, 165, 0.05); border-radius: 8px; padding: 2rem;">
-                                    <div style="color: #4A6FA5; font-size: 1.2rem; margin-bottom: 1rem;">
-                                        Analyzing Sources & Generating Article
-                                    </div>
-                                    <div class="stProgress">
-                                        <div style="width: 100%; height: 4px; background: #f0f2f6; border-radius: 2px; overflow: hidden;">
-                                            <div style="width: 30%; height: 100%; background: #4A6FA5; border-radius: 2px; animation: loading 1.5s infinite ease-in-out;">
+                # Add buttons in two columns
+                button_col1, button_col2 = st.columns([1, 1])
+                with button_col1:
+                    if st.button("Remove Cluster", key=f"remove_cluster_{i}", type="secondary"):
+                        st.session_state.clusters.pop(i)
+                        st.rerun()
+                with button_col2:
+                    if st.button("Create Article", key=f"eval_cluster_{i}"):
+                        st.session_state.evaluating_cluster = i
+                        
+                        # Create a placeholder for the loading animation
+                        with col2:
+                            loading_placeholder = st.empty()
+                            with loading_placeholder.container():
+                                st.markdown("""
+                                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 300px; background: rgba(74, 111, 165, 0.05); border-radius: 8px; padding: 2rem;">
+                                        <div style="color: #4A6FA5; font-size: 1.2rem; margin-bottom: 1rem;">
+                                            Analyzing Sources & Generating Article
+                                        </div>
+                                        <div class="stProgress">
+                                            <div style="width: 100%; height: 4px; background: #f0f2f6; border-radius: 2px; overflow: hidden;">
+                                                <div style="width: 30%; height: 100%; background: #4A6FA5; border-radius: 2px; animation: loading 1.5s infinite ease-in-out;">
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
+                                    
+                                    <style>
+                                        @keyframes loading {
+                                            0% { transform: translateX(-100%); }
+                                            100% { transform: translateX(200%); }
+                                        }
+                                        .stProgress {
+                                            width: 200px;
+                                        }
+                                    </style>
+                                """, unsafe_allow_html=True)
                                 
-                                <style>
-                                    @keyframes loading {
-                                        0% { transform: translateX(-100%); }
-                                        100% { transform: translateX(200%); }
-                                    }
-                                    .stProgress {
-                                        width: 200px;
-                                    }
-                                </style>
-                            """, unsafe_allow_html=True)
-                            
-                            # Add source information
-                            st.markdown(f"""
-                                <div style="margin-top: 1rem; text-align: center; color: rgba(74, 111, 165, 0.7);">
-                                    Processing {len(cluster.get('articles', []))} source articles
-                                </div>
-                            """, unsafe_allow_html=True)
-                    
-                    # Generate the article
-                    with st.spinner():
-                        try:
-                            article_data = create_article(cluster)
-                            if article_data:
-                                st.session_state.selected_cluster = cluster
-                                st.session_state.article_data = article_data
-                                st.session_state.current_step = 1
-                                st.session_state.clusters.pop(i)
-                                st.session_state.evaluating_cluster = None
+                                # Add source information
+                                st.markdown(f"""
+                                    <div style="margin-top: 1rem; text-align: center; color: rgba(74, 111, 165, 0.7);">
+                                        Processing {len(cluster.get('articles', []))} source articles
+                                    </div>
+                                """, unsafe_allow_html=True)
                                 
-                                # Clear the loading animation
-                                loading_placeholder.empty()
-                                
-                                st.rerun()
-                            else:
-                                raise ValueError("Empty article data returned from create_article")
-                        except Exception as e:
-                            # Show error in the loading placeholder
-                            with loading_placeholder.container():
-                                st.error(f"Failed to generate article. Error: {str(e)}")
-                                time.sleep(2)  # Show error for 1 minute
-                                st.session_state.evaluating_cluster = None
-                                st.rerun()
+                                # Generate the article
+                                try:
+                                    article_data = create_article(cluster)
+                                    if article_data:
+                                        st.session_state.selected_cluster = cluster
+                                        st.session_state.article_data = article_data
+                                        st.session_state.current_step = 1
+                                        st.session_state.clusters.pop(i)
+                                        st.session_state.evaluating_cluster = None
+                                        loading_placeholder.empty()
+                                        st.rerun()
+                                    else:
+                                        raise ValueError("Empty article data returned from create_article")
+                                except Exception as e:
+                                    st.error(f"Failed to generate article. Error: {str(e)}")
+                                    time.sleep(2)
+                                    st.session_state.evaluating_cluster = None
+                                    st.rerun()
 
     with col2:
         if st.session_state.selected_cluster and st.session_state.article_data:

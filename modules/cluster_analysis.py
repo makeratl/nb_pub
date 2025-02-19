@@ -7,6 +7,20 @@ import streamlit as st
 ANALYSIS_AGENT_ID = "03d17f5c-0c9b-40ee-8a53-3829f2746f0e"
 ARTICLE_CREATION_AGENT_ID = "c065444b-510f-4ab0-97b8-3840c66109d3"
 
+def deduplicate_articles(articles):
+    """Remove duplicate articles with same title, keeping most recent version"""
+    title_dict = {}
+    for article in articles:
+        title = article.get('title', '')
+        pub_date = article.get('published_date', '')
+        
+        # If we haven't seen this title or this is a more recent version
+        if title not in title_dict or pub_date > title_dict[title].get('published_date', ''):
+            title_dict[title] = article
+    
+    # Return deduplicated articles sorted by date
+    return sorted(title_dict.values(), key=lambda x: x.get('published_date', ''), reverse=True)
+
 def analyze_cluster(cluster):
     """Analyze a single cluster by extracting basic stats and most recent article"""
     articles = cluster.get('articles', [])
@@ -22,7 +36,10 @@ def analyze_cluster(cluster):
     
     if not articles:
         return None
-        
+    
+    # Deduplicate articles with same title
+    articles = deduplicate_articles(articles)
+    
     # Get unique sources
     unique_sources = set(article.get('name_source', 'Unknown') for article in articles)
     
@@ -30,25 +47,15 @@ def analyze_cluster(cluster):
     st.write("Debug: Number of unique sources:", len(unique_sources))
     st.write("Debug: Unique sources:", list(unique_sources))
     
-    # Sort articles by published date and get most recent
-    sorted_articles = sorted(
-        articles,
-        key=lambda x: x.get('published_date', ''),
-        reverse=True
-    )
-    
-    # Get the first article's headline as a fallback
-    first_article_headline = articles[0].get('title', 'No title available')
-    
-    # Use most recent if available, otherwise use first article
-    most_recent = sorted_articles[0] if sorted_articles else articles[0]
+    # Most recent article is already first after deduplication
+    most_recent = articles[0] if articles else None
     
     # Debug: Print result before returning
     result = {
         'article_count': len(articles),
         'unique_source_count': len(unique_sources),
-        'most_recent_headline': most_recent.get('title', first_article_headline),
-        'most_recent_date': most_recent.get('published_date', 'No date available'),
+        'most_recent_headline': most_recent.get('title', 'No title available') if most_recent else 'No title available',
+        'most_recent_date': most_recent.get('published_date', 'No date available') if most_recent else 'No date available',
         'articles': articles
     }
     
