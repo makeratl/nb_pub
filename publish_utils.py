@@ -2,7 +2,7 @@ import http.client
 import json
 import base64
 import traceback
-from modules.haiku_image_generator import generate_haiku_background
+from modules.unified_haiku_image_generator import generate_haiku_images
 from colorama import Fore, Style
 from PIL import Image
 from io import BytesIO
@@ -14,23 +14,20 @@ def encode_image(image_path):
         encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
         return f"data:image/jpeg;base64,{encoded_string}"
 
-def generate_and_encode_images(image_path, image_with_text_path):
-    # Load the generated image files
-    image = Image.open("haikubg.png")
-    image_with_text = Image.open("haikubg_with_text.jpg")
-    
-    # Encode the images
-    buffered = BytesIO()
-    image.save(buffered, format="PNG")
-    encoded_image = base64.b64encode(buffered.getvalue()).decode('utf-8')
-    encoded_image = f"data:image/jpeg;base64,{encoded_image}"
-    
-    buffered_with_text = BytesIO()
-    image_with_text.save(buffered_with_text, format="JPEG")
-    encoded_image_with_text = base64.b64encode(buffered_with_text.getvalue()).decode('utf-8')
-    encoded_image_with_text = f"data:image/jpeg;base64,{encoded_image_with_text}"
-    
-    return encoded_image, encoded_image_with_text
+def generate_and_encode_images(image_path, output_path):
+    """Generate and encode images for publishing"""
+    try:
+        if image_path:
+            # Encode the original image
+            encoded_image = encode_image(image_path)
+            # Encode the image with text
+            encoded_image_with_text = encode_image(output_path)
+            return encoded_image, encoded_image_with_text
+        else:
+            return None, None
+    except Exception as e:
+        print(f"Error encoding images: {str(e)}")
+        return None, None
 
 def publish_article(publish_data, api_key):
     """Send article data to publishing API"""

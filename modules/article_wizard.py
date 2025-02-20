@@ -4,8 +4,7 @@ from .display import get_bias_color
 from .article_evaluation import evaluate_article_with_ai
 from publish_utils import publish_article, generate_and_encode_images, search_historical_articles
 from .utils import reset_article_state
-from .haiku_image_generator import generate_haiku_background, generate_image_prompt
-from .bluesky_haiku_image_generator import generate_bluesky_haiku_background
+from .unified_haiku_image_generator import generate_haiku_images
 from .bluesky_publish import publish_to_bluesky
 from .keyword_optimizer import optimize_headline_keywords
 from .api_client import get_news_data
@@ -866,53 +865,45 @@ def display_review_step():
         
         st.session_state.current_step = 3
         
-        # Trigger image generation when entering step 3
-        with st.spinner("Generating initial haiku image..."):
-            image_path, image_prompt = generate_haiku_background(
+        # Generate both images at once using the unified generator
+        with st.spinner("Running image generation..."):
+            standard_image, bluesky_image, image_prompt = generate_haiku_images(
                 st.session_state.publish_data.get('AIHaiku', ''),
                 st.session_state.publish_data.get('AIHeadline', ''),
                 st.session_state.publish_data.get('article_date', ''),
-                st.session_state.publish_data.get('image_prompt', '')
+                None,  # No existing prompt for initial generation
+                None   # No feedback for initial generation
             )
-            if image_path:
-                st.session_state.haiku_image_path = image_path
+            
+            if standard_image and bluesky_image:
+                st.session_state.haiku_image_path = standard_image
+                st.session_state.bluesky_image_path = bluesky_image
                 st.session_state.publish_data['image_prompt'] = image_prompt
-                st.success("Initial haiku image generated successfully!")
                 
-                encoded_image, encoded_image_with_text = generate_and_encode_images(
-                    image_path,
-                    "haikubg_with_text.png"
+                # Generate and store encoded images for publishing
+                encoded_standard_image, encoded_standard_image_with_text = generate_and_encode_images(
+                    standard_image,
+                    "haikubg_with_text.jpg"
                 )
                 st.session_state.publish_data.update({
-                    'image_data': encoded_image,
-                    'image_haiku': encoded_image_with_text
+                    'image_data': encoded_standard_image,
+                    'image_haiku': encoded_standard_image_with_text
                 })
                 st.session_state.initial_image_generated = True
-            else:
-                st.error("Failed to generate initial haiku image")
-        
-        # Trigger Bluesky image generation when entering step 3
-        with st.spinner("Generating initial Bluesky haiku image..."):
-            bluesky_image_path, _ = generate_bluesky_haiku_background(
-                st.session_state.publish_data.get('AIHaiku', ''),
-                st.session_state.publish_data.get('AIHeadline', ''),
-                st.session_state.publish_data.get('article_date', ''),
-                st.session_state.publish_data.get('image_prompt', '')
-            )
-            if bluesky_image_path:
-                st.session_state.bluesky_image_path = bluesky_image_path
-                    
+                
                 encoded_bluesky_image, encoded_bluesky_image_with_text = generate_and_encode_images(
-                    bluesky_image_path,
-                    "bluesky_haikubg_with_text.png"
+                    bluesky_image,
+                    "bluesky_haikubg_with_text.jpg"
                 )
                 st.session_state.publish_data.update({
                     'bluesky_image_data': encoded_bluesky_image,
                     'bluesky_image_haiku': encoded_bluesky_image_with_text
                 })
                 st.session_state.initial_bluesky_image_generated = True
+                
+                st.success("Haiku images generated successfully!")
             else:
-                st.error("Failed to generate initial Bluesky haiku image")
+                st.error("Failed to generate haiku images")
         
         st.rerun()
     
@@ -1333,62 +1324,46 @@ def display_image_step():
             haiku = st.session_state.publish_data.get('AIHaiku', '')
             headline = st.session_state.publish_data.get('AIHeadline', '')
             article_date = st.session_state.publish_data.get('article_date', '')
-            previous_prompt = st.session_state.publish_data.get('image_prompt', '')
-
-            # Generate a single prompt for both images, including feedback
-            image_prompt = generate_image_prompt(haiku, headline, feedback)
             
-            # Generate standard image
-            standard_image_path, _ = generate_haiku_background(
+            # Generate both images using the unified generator
+            standard_image, bluesky_image, image_prompt = generate_haiku_images(
                 haiku,
                 headline,
                 article_date,
-                image_prompt
+                None,  # Don't reuse previous prompt when regenerating
+                feedback
             )
             
-            if standard_image_path:
+            if standard_image and bluesky_image:
                 # Update session state with new image paths
-                st.session_state.haiku_image_path = standard_image_path
+                st.session_state.haiku_image_path = standard_image
+                st.session_state.bluesky_image_path = bluesky_image
                 
                 # Update publish data with new image prompt
                 st.session_state.publish_data['image_prompt'] = image_prompt
                 
                 # Generate and store encoded images for publishing
                 encoded_standard_image, encoded_standard_image_with_text = generate_and_encode_images(
-                    standard_image_path,
-                    "haikubg_with_text.png"
+                    standard_image,
+                    "haikubg_with_text.jpg"
                 )
                 st.session_state.publish_data.update({
                     'image_data': encoded_standard_image,
-                    'image_haiku': encoded_standard_image_with_text,
+                    'image_haiku': encoded_standard_image_with_text
                 })
                 
-                # Generate new Bluesky image using the same prompt
-                bluesky_image_path, _ = generate_bluesky_haiku_background(
-                    haiku,
-                    headline,
-                    article_date,
-                    image_prompt  # Pass the same prompt
+                encoded_bluesky_image, encoded_bluesky_image_with_text = generate_and_encode_images(
+                    bluesky_image,
+                    "bluesky_haikubg_with_text.jpg"
                 )
-                
-                if bluesky_image_path:
-                    st.session_state.bluesky_image_path = bluesky_image_path
-                    
-                    encoded_bluesky_image, encoded_bluesky_image_with_text = generate_and_encode_images(
-                        bluesky_image_path,
-                        "bluesky_haikubg_with_text.png"
-                    )
-                    st.session_state.publish_data.update({
-                        'bluesky_image_data': encoded_bluesky_image,
-                        'bluesky_image_haiku': encoded_bluesky_image_with_text
-                    })
-                else:
-                    st.error("Failed to generate new Bluesky image")
+                st.session_state.publish_data.update({
+                    'bluesky_image_data': encoded_bluesky_image,
+                    'bluesky_image_haiku': encoded_bluesky_image_with_text
+                })
                 
                 # Save updated publish data to file
                 with open('publish.json', 'w') as f:
                     json.dump(st.session_state.publish_data, f, indent=2)
-                # st.success("New images generated successfully!")
             else:
                 st.error("Failed to generate new images")
     
