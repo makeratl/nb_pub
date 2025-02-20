@@ -13,7 +13,7 @@ load_dotenv()
 api_key = os.getenv("HORIAR_API_KEY")
 
 # Define the specific agent ID for image generation
-IMAGE_GENERATION_AGENT_ID = "ee203091-d2a5-4013-8d66-21b3c1ab642b"
+IMAGE_GENERATION_AGENT_ID = "c065444b-510f-4ab0-97b8-3840c66109d3"
 
 def generate_unified_image_prompt(haiku, ai_headline, feedback=None):
     """
