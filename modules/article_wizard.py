@@ -882,8 +882,8 @@ def display_review_step():
                 
                 # Generate and store encoded images for publishing
                 encoded_standard_image, encoded_standard_image_with_text = generate_and_encode_images(
-                    standard_image,
-                    "haikubg_with_text.jpg"
+                    "haikubg.png",  # background without text
+                    "haikubg_with_text.jpg"  # image with text overlay
                 )
                 st.session_state.publish_data.update({
                     'image_data': encoded_standard_image,
@@ -892,8 +892,8 @@ def display_review_step():
                 st.session_state.initial_image_generated = True
                 
                 encoded_bluesky_image, encoded_bluesky_image_with_text = generate_and_encode_images(
-                    bluesky_image,
-                    "bluesky_haikubg_with_text.jpg"
+                    "bluesky_haikubg.png",  # background without text
+                    "bluesky_haikubg_with_text.jpg"  # image with text overlay
                 )
                 st.session_state.publish_data.update({
                     'bluesky_image_data': encoded_bluesky_image,
@@ -1344,8 +1344,8 @@ def display_image_step():
                 
                 # Generate and store encoded images for publishing
                 encoded_standard_image, encoded_standard_image_with_text = generate_and_encode_images(
-                    standard_image,
-                    "haikubg_with_text.jpg"
+                    "haikubg.png",  # background without text
+                    "haikubg_with_text.jpg"  # image with text overlay
                 )
                 st.session_state.publish_data.update({
                     'image_data': encoded_standard_image,
@@ -1353,8 +1353,8 @@ def display_image_step():
                 })
                 
                 encoded_bluesky_image, encoded_bluesky_image_with_text = generate_and_encode_images(
-                    bluesky_image,
-                    "bluesky_haikubg_with_text.jpg"
+                    "bluesky_haikubg.png",  # background without text
+                    "bluesky_haikubg_with_text.jpg"  # image with text overlay
                 )
                 st.session_state.publish_data.update({
                     'bluesky_image_data': encoded_bluesky_image,
